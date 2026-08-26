@@ -1,0 +1,56 @@
+version: 2
+
+updates:
+  # Backend dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      # An SDK bump changes real-time media behavior. Keep it on its own PR
+      # so it can be tested against a live meeting before merging.
+      zoom-rtms-sdk:
+        patterns:
+          - "@zoom/rtms"
+      dev-dependencies:
+        dependency-type: "development"
+
+  # React Surface App dependencies
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      frontend-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"
+
+  # The base image must stay glibc-based; @zoom/rtms ships a glibc-linked
+  # native addon and will not load against musl.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "docker"

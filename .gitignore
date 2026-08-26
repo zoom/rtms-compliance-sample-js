@@ -1,0 +1,39 @@
+# Credentials — never commit
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+web/node_modules/
+
+# Build output
+dist/
+build/
+web/dist/
+*.tsbuildinfo
+
+# Test and coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Prisma generated client
+src/db/generated/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local rule packs that are not part of the sample
+rule-packs/local-*.yaml
