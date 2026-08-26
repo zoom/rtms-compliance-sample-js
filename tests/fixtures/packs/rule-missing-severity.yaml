@@ -1,0 +1,6 @@
+id: no-severity-v1
+jurisdiction: US
+prohibited:
+  - id: guaranteed-return
+    match: ["guaranteed return"]
+    guidance: "Restate as a historical range."

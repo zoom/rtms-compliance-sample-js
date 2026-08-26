@@ -1,0 +1,21 @@
+id: test-pack-v1
+jurisdiction: US
+applies_to: [unit-test]
+prohibited:
+  - id: guaranteed-return
+    severity: high
+    match: ["guaranteed return", "risk[- ]free"]
+    guidance: "Past performance does not guarantee future results."
+  - id: unapproved-projection
+    severity: medium
+    match: ["we always beat"]
+    guidance: "Replace the projection with approved illustration language."
+required_disclosures:
+  - id: recording-consent
+    severity: high
+    satisfied_by: ["this meeting is being recorded"]
+    prompt: "Confirm verbal consent to record before continuing."
+  - id: fees-and-conflicts
+    severity: high
+    satisfied_by: ["advisory fee", "conflict of interest"]
+    prompt: "State the advisory fee schedule and any conflicts of interest."

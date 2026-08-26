@@ -1,0 +1,47 @@
+{
+  "name": "rtms-compliance-sample-js",
+  "version": "0.1.0",
+  "description": "Real-time compliance advisor for Zoom Meetings, built on the Zoom RTMS SDK",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/server.js",
+    "dev": "node --env-file=.env --watch src/server.js",
+    "test": "node --test --test-reporter=spec \"tests/**/*.test.js\"",
+    "test:unit": "node --test --test-reporter=spec \"tests/unit/*.test.js\"",
+    "test:integration": "node --test --test-reporter=spec \"tests/integration/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage \"tests/**/*.test.js\"",
+    "lint": "eslint src tests && prettier --check \"**/*.{js,jsx,json,md,yaml,yml}\"",
+    "lint:fix": "eslint --fix src tests && prettier --write \"**/*.{js,jsx,json,md,yaml,yml}\"",
+    "packs:validate": "node scripts/validate-packs.js"
+  },
+  "dependencies": {
+    "@zoom/rtms": "^1.1.0",
+    "express": "^5.1.0",
+    "ws": "^8.18.0",
+    "yaml": "^2.8.0",
+    "jsonwebtoken": "^9.0.2",
+    "@prisma/client": "^6.14.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.34.0",
+    "prettier": "^3.6.0",
+    "prisma": "^6.14.0"
+  },
+  "keywords": [
+    "zoom",
+    "rtms",
+    "compliance",
+    "real-time",
+    "sample"
+  ],
+  "author": "Zoom Communications, Inc.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoom/rtms-compliance-sample-js.git"
+  }
+}

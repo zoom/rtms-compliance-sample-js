@@ -1,0 +1,5 @@
+id: broken-pack-v1
+prohibited:
+  - id: unterminated
+    match: ["one", "two"
+    severity: high
