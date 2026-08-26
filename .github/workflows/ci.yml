@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 is the floor @zoom/rtms requires (N-API 9/10). 24 is what we ship.
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  packs:
+    name: validate rule packs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run packs:validate
+
+  docker:
+    name: docker build and boot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This job is the only place the real @zoom/rtms native addon gets
+      # loaded. Unit tests use a fake, so without this a broken base image or
+      # a musl regression would ship undetected.
+      - name: Build image
+        run: docker build -t rtms-compliance-sample:ci .
+
+      - name: Boot the container and check health
+        env:
+          # Placeholder values. The container must start and serve /health
+          # without ever reaching Zoom.
+          ZM_RTMS_CLIENT: ci-client-id
+          ZM_RTMS_SECRET: ci-client-secret
+          ZM_RTMS_WEBHOOK_SECRET: ci-webhook-secret
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+          PUBLIC_URL: https://ci.example.invalid
+          SESSION_SECRET: ci-session-secret-0000000000000000
+          JWT_SECRET: ci-jwt-secret-000000000000000000000
+          TOKEN_ENCRYPTION_KEY: ci-token-key-00000000000000000000
+          RULE_PACK_ID: fin-us-retail-v3
+          LLM_API_KEY: ci-llm-key
+        run: |
+          docker run -d --name compliance-ci -p 3000:3000 \
+            -e ZM_RTMS_CLIENT -e ZM_RTMS_SECRET -e ZM_RTMS_WEBHOOK_SECRET \
+            -e DATABASE_URL -e PUBLIC_URL -e SESSION_SECRET -e JWT_SECRET \
+            -e TOKEN_ENCRYPTION_KEY -e RULE_PACK_ID -e LLM_API_KEY \
+            -e SKIP_DB_MIGRATE=true \
+            rtms-compliance-sample:ci
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/health > /dev/null; then
+              echo "container healthy after ${attempt}s"
+              curl -sS http://127.0.0.1:3000/health
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "container did not become healthy" >&2
+          docker logs compliance-ci >&2
+          exit 1
+
+      - name: Container logs
+        if: always()
+        run: docker logs compliance-ci || true
+
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan for committed credentials
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

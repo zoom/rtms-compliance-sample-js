@@ -110,8 +110,17 @@ describe('GET /api/meetings/:id/audit', () => {
   });
 
   test('should return an empty chain and a valid verification for an unknown meeting', async () => {
-    const res = await call(router, { path: '/api/meetings/no-such-meeting/audit', token: validToken() });
+    // The token must be scoped to the meeting being requested. Reading another
+    // meeting's chain is a 403, asserted below; an empty chain is not an
+    // exception to that rule, so this token is scoped to the unknown meeting.
+    const scopedToken = jwt.sign(
+      { meetingId: 'no-such-meeting', userId: 42, role: 'representative' },
+      JWT_SECRET,
+    );
 
+    const res = await call(router, { path: '/api/meetings/no-such-meeting/audit', token: scopedToken });
+
+    assert.equal(res.statusCode, 200, 'an empty chain is a valid answer, not an error');
     assert.deepEqual(res.body.records, []);
     assert.equal(res.body.verification.valid, true);
   });
