@@ -28,12 +28,13 @@ logs/
 *.log
 npm-debug.log*
 
-# OS and editor
+# OS, editor, and agent tooling
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+.claude/
 
 # Local rule packs that are not part of the sample
 rule-packs/local-*.yaml

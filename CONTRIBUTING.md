@@ -78,6 +78,18 @@ Two rules the linter cannot catch:
 1. **No Zoom hostname outside `src/config.js`.** Everything reads `config.apiHost` so that a Zoom for Government deployment is one environment variable. A test enforces this.
 2. **No credentials in logs.** Secrets are attached to the config object non-enumerably so `JSON.stringify(config)` cannot leak them. Keep it that way.
 
+## Dependency pins worth knowing about
+
+`package.json` carries one `overrides` entry:
+
+```json
+"overrides": { "deepmerge-ts": "^8.0.0" }
+```
+
+The Prisma CLI depends on `deepmerge-ts` 7.x, which has a stack-exhaustion advisory ([GHSA-ggr8-5vv4-36mx](https://github.com/advisories/GHSA-ggr8-5vv4-36mx)). The override forces 8.x and brings `npm audit` to zero. Remove it once Prisma ships a release that depends on 8.x directly.
+
+Prisma is intentionally held at 6.x. Prisma 7 moves the datasource URL into a `prisma.config.ts` and requires a driver adapter, which is a meaningful amount of plumbing for a sample whose subject is RTMS rather than ORM configuration.
+
 ## Never commit credentials
 
 `.env` is gitignored. `.env.example` carries placeholders only, in the form `YOUR_VALUE_HERE`. CI runs a secret scan on every PR, and Zoom's push-time scanner also matches key-shaped strings, so even a realistic-looking fake key will be rejected.
