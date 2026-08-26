@@ -2,13 +2,13 @@
 
 Backing sample for the [Real-Time Compliance Advisor in Meetings](https://github.com/zoom/blueprints/tree/main/blueprints/realtime-compliance-advisor) blueprint.
 
-| | |
-|---|---|
-| **Status** | Spec. No implementation yet. |
-| **Complexity target** | Production-ready sample |
-| **Primary audience** | Experienced developers at regulated firms |
-| **ZfG compatible** | Yes, via configurable `ZOOM_HOST` |
-| **Runtime** | Node.js >= 22 (24 LTS recommended), `darwin-arm64` or `linux-x64` |
+|                       |                                                                   |
+| --------------------- | ----------------------------------------------------------------- |
+| **Status**            | Spec. No implementation yet.                                      |
+| **Complexity target** | Production-ready sample                                           |
+| **Primary audience**  | Experienced developers at regulated firms                         |
+| **ZfG compatible**    | Yes, via configurable `ZOOM_HOST`                                 |
+| **Runtime**           | Node.js >= 22 (24 LTS recommended), `darwin-arm64` or `linux-x64` |
 
 ---
 
@@ -24,11 +24,11 @@ The app is deliberately opinionated in two ways. Screening is two-stage: a deter
 
 ## Zoom Products Used
 
-| Product | Features demonstrated |
-|---------|----------------------|
+| Product                                                                                                        | Features demonstrated                                                                                                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **[RTMS](https://developers.zoom.us/docs/rtms/)** via [`@zoom/rtms`](https://www.npmjs.com/package/@zoom/rtms) | `createWebhookHandler` mounted on Express; `Client.join`/`leave`; `onTranscriptData`; `setTranscriptParams` for explicit source language; `onParticipantEvent` for the attendee roster; `onActiveSpeakerEvent`; `onJoinConfirm`; `onLeave`; `onMediaConnectionInterrupted` for coverage gaps; `setProxy` for inspected egress |
-| **[Zoom Apps](https://developers.zoom.us/docs/zoom-apps/)** (Surface App) | In-meeting panel via the Zoom Apps SDK; `getMeetingUUID`, `getUserContext`, `getRunningContext`; in-client OAuth |
-| **[Webhooks](https://developers.zoom.us/docs/api/webhooks/)** | `meeting.rtms_started`, `meeting.rtms_stopped`, `endpoint.url_validation`; HMAC-SHA256 signature verification with a replay window |
+| **[Zoom Apps](https://developers.zoom.us/docs/zoom-apps/)** (Surface App)                                      | In-meeting panel via the Zoom Apps SDK; `getMeetingUUID`, `getUserContext`, `getRunningContext`; in-client OAuth                                                                                                                                                                                                              |
+| **[Webhooks](https://developers.zoom.us/docs/api/webhooks/)**                                                  | `meeting.rtms_started`, `meeting.rtms_stopped`, `endpoint.url_validation`; HMAC-SHA256 signature verification with a replay window                                                                                                                                                                                            |
 
 Explicitly not used: Meeting SDK, Video SDK, Team Chat, Phone, Contact Center, Zoom REST meeting APIs beyond metadata.
 
@@ -40,7 +40,7 @@ Explicitly not used: Meeting SDK, Video SDK, Team Chat, Phone, Contact Center, Z
 
 **General App with a Zoom App (Surface) surface plus user-level OAuth.**
 
-Justification: the panel runs inside the Zoom client, which requires the Zoom App type and the `zoomapp:inmeeting` scope. The app also needs to know *which* participant is the assigned representative, because alert visibility is scoped to that person; leaking a compliance alert to the client on the call is itself a problem. That identity comes from user-level OAuth via in-client OAuth, not from an account-level token.
+Justification: the panel runs inside the Zoom client, which requires the Zoom App type and the `zoomapp:inmeeting` scope. The app also needs to know _which_ participant is the assigned representative, because alert visibility is scoped to that person; leaking a compliance alert to the client on the call is itself a problem. That identity comes from user-level OAuth via in-client OAuth, not from an account-level token.
 
 Server-to-Server OAuth was considered and rejected. It would give account-level access with no per-user identity, so the app could not scope alert delivery, and the audit record would not attribute the dismissal of an alert to a specific representative.
 
@@ -48,21 +48,21 @@ The RTMS SDK authenticates with the same app's OAuth Client ID and Secret, suppl
 
 ### Required Scopes
 
-| Scope | Optional | Why it's needed |
-|-------|----------|-----------------|
-| `zoomapp:inmeeting` | No | Render the advisor panel inside a meeting. Without it there is no Surface App. |
-| `meeting:read:meeting` | No | Meeting topic, scheduled start, and host for the audit record header. |
-| `user:read` | Yes | Resolve the assigned representative's name and ID for alert scoping and dismissal attribution. Degrades to "representative" as a label if not granted. |
+| Scope                  | Optional | Why it's needed                                                                                                                                        |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `zoomapp:inmeeting`    | No       | Render the advisor panel inside a meeting. Without it there is no Surface App.                                                                         |
+| `meeting:read:meeting` | No       | Meeting topic, scheduled start, and host for the audit record header.                                                                                  |
+| `user:read`            | Yes      | Resolve the assigned representative's name and ID for alert scoping and dismissal attribution. Degrades to "representative" as a label if not granted. |
 
 No participant scope is requested. The attendee roster on the audit record comes from the SDK's `onParticipantEvent` callback, which is delivered over the media stream the app is already entitled to.
 
 ### Webhook Events
 
-| Event | Handling |
-|-------|----------|
+| Event                     | Handling                                                                                                                                                   |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `endpoint.url_validation` | Answered before signature verification, since the challenge carries no signature. Responds with `plainToken` and its HMAC-SHA256 under the webhook secret. |
-| `meeting.rtms_started` | Verify signature, construct `rtms.Client`, register all callbacks, set transcript params, `join(payload)`. |
-| `meeting.rtms_stopped` | Verify signature, `leave()` the client for that `rtms_stream_id`, close the audit chain. |
+| `meeting.rtms_started`    | Verify signature, construct `rtms.Client`, register all callbacks, set transcript params, `join(payload)`.                                                 |
+| `meeting.rtms_stopped`    | Verify signature, `leave()` the client for that `rtms_stream_id`, close the audit chain.                                                                   |
 
 ---
 
@@ -157,10 +157,10 @@ Required. Compliance tooling has an obvious federal and public-sector audience.
 - `ZOOM_HOST` environment variable, defaulting to `https://zoom.us`.
 - Derived hosts, all computed from `ZOOM_HOST` rather than hardcoded:
 
-  | Commercial | Government |
-  |---|---|
-  | `https://zoom.us` | `https://zoomgov.com` |
-  | `https://api.zoom.us` | `https://api.zoomgov.com` |
+  | Commercial                    | Government                        |
+  | ----------------------------- | --------------------------------- |
+  | `https://zoom.us`             | `https://zoomgov.com`             |
+  | `https://api.zoom.us`         | `https://api.zoomgov.com`         |
   | `https://marketplace.zoom.us` | `https://marketplace.zoomgov.com` |
 
 - No `zoom.us` string appears outside `config.js`. A test asserts this.
@@ -273,23 +273,23 @@ Required. Compliance tooling has an obvious federal and public-sector audience.
 
 Every item here appears in a "Not production ready" section of the README.
 
-| Simplification in this sample | Production guidance |
-|---|---|
-| `.env` file for credentials | AWS Secrets Manager, HashiCorp Vault, or platform secret storage |
-| Single-instance in-memory session `Map` | Redis, so a restart does not orphan joined streams or lose `seqNo` counters |
-| Single-instance WebSocket broadcast | Redis pub/sub fan-out across instances |
-| Audit records in the same Postgres as app data | Separate database with WORM or object-lock backups, and a distinct credential |
-| Hash chain only, no external anchoring | Periodically publish chain heads to an append-only external store or timestamping authority |
-| Rule packs loaded from local disk | Versioned artifact from a registry, with a compliance sign-off gate in CI |
-| Synchronous LLM adjudication in the request path | Job queue with a bounded worker pool and backpressure |
-| Single LLM call with a fixed timeout, no retry | Exponential backoff with jitter, plus a circuit breaker |
-| No LLM provider rate-limit handling | Detect 429, back off, and degrade to deterministic-only screening with a coverage-gap record |
-| Supervisor webhook is fire-and-forget | Durable outbox with retries and a dead-letter path |
-| No transcript retention policy enforcement | Scheduled deletion job aligned to your retention schedule, separate from the audit chain |
-| No PII or PHI redaction before LLM egress | Redact or tokenize before egress, or run inference in your own boundary |
-| Prisma migrations applied at container start | Gated migration step in the deploy pipeline |
-| Errors logged and swallowed at the callback boundary | Structured error reporting with alerting on screening-path failures |
-| No authentication on the audit export endpoint beyond the meeting JWT | Role-based access control; auditors are not meeting participants |
+| Simplification in this sample                                         | Production guidance                                                                          |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `.env` file for credentials                                           | AWS Secrets Manager, HashiCorp Vault, or platform secret storage                             |
+| Single-instance in-memory session `Map`                               | Redis, so a restart does not orphan joined streams or lose `seqNo` counters                  |
+| Single-instance WebSocket broadcast                                   | Redis pub/sub fan-out across instances                                                       |
+| Audit records in the same Postgres as app data                        | Separate database with WORM or object-lock backups, and a distinct credential                |
+| Hash chain only, no external anchoring                                | Periodically publish chain heads to an append-only external store or timestamping authority  |
+| Rule packs loaded from local disk                                     | Versioned artifact from a registry, with a compliance sign-off gate in CI                    |
+| Synchronous LLM adjudication in the request path                      | Job queue with a bounded worker pool and backpressure                                        |
+| Single LLM call with a fixed timeout, no retry                        | Exponential backoff with jitter, plus a circuit breaker                                      |
+| No LLM provider rate-limit handling                                   | Detect 429, back off, and degrade to deterministic-only screening with a coverage-gap record |
+| Supervisor webhook is fire-and-forget                                 | Durable outbox with retries and a dead-letter path                                           |
+| No transcript retention policy enforcement                            | Scheduled deletion job aligned to your retention schedule, separate from the audit chain     |
+| No PII or PHI redaction before LLM egress                             | Redact or tokenize before egress, or run inference in your own boundary                      |
+| Prisma migrations applied at container start                          | Gated migration step in the deploy pipeline                                                  |
+| Errors logged and swallowed at the callback boundary                  | Structured error reporting with alerting on screening-path failures                          |
+| No authentication on the audit export endpoint beyond the meeting JWT | Role-based access control; auditors are not meeting participants                             |
 
 ---
 
@@ -299,16 +299,16 @@ Node's built-in `node:test` runner. No extra framework, since the SDK already re
 
 ### Unit
 
-| Module | Focus |
-|---|---|
-| `rtms/webhook.js` | Signature valid, invalid, missing, stale timestamp, length mismatch, url_validation bypass. Criteria 1-6. |
-| `rtms/segments.js` | Buffer decode, timestamp passthrough, seqNo monotonicity, missing metadata defaults. Criteria 14-17. |
-| `compliance/packs.js` | Valid load, bad YAML, missing `id`, rule missing `severity`, compile-once assertion. Criteria 19-20. |
-| `compliance/screen.js` | Single match, multi match, no match, suppression window boundary at 60s and 61s, case and whitespace normalization, latency budget. Criteria 21-24. |
-| `compliance/adjudicate.js` | Fenced JSON, malformed JSON, timeout, guidance present in prompt, modelId recorded. Criteria 25-30. |
-| `compliance/disclosures.js` | Satisfaction by representative, non-satisfaction by client, no reverse transition, quote captured. Criteria 32-34. |
-| `compliance/audit.js` | Genesis prevHash, chain linkage, tamper detection, deletion detection, key-order independence, append-only corrections. Criteria 35-41. |
-| `config.js` | Missing var enumeration, ZOOM_HOST derivation for commercial and gov. Criteria 49-50. |
+| Module                      | Focus                                                                                                                                               |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rtms/webhook.js`           | Signature valid, invalid, missing, stale timestamp, length mismatch, url_validation bypass. Criteria 1-6.                                           |
+| `rtms/segments.js`          | Buffer decode, timestamp passthrough, seqNo monotonicity, missing metadata defaults. Criteria 14-17.                                                |
+| `compliance/packs.js`       | Valid load, bad YAML, missing `id`, rule missing `severity`, compile-once assertion. Criteria 19-20.                                                |
+| `compliance/screen.js`      | Single match, multi match, no match, suppression window boundary at 60s and 61s, case and whitespace normalization, latency budget. Criteria 21-24. |
+| `compliance/adjudicate.js`  | Fenced JSON, malformed JSON, timeout, guidance present in prompt, modelId recorded. Criteria 25-30.                                                 |
+| `compliance/disclosures.js` | Satisfaction by representative, non-satisfaction by client, no reverse transition, quote captured. Criteria 32-34.                                  |
+| `compliance/audit.js`       | Genesis prevHash, chain linkage, tamper detection, deletion detection, key-order independence, append-only corrections. Criteria 35-41.             |
+| `config.js`                 | Missing var enumeration, ZOOM_HOST derivation for commercial and gov. Criteria 49-50.                                                               |
 
 ### Integration
 
@@ -337,13 +337,13 @@ Documented in the README rather than faked:
 
 ### GitHub Actions (`.github/workflows/ci.yml`)
 
-| Job | Runs |
-|---|---|
-| `test` | Node 22 and 24 matrix on `ubuntu-latest`: `npm ci`, `npm test`, coverage summary |
-| `lint` | ESLint plus `prettier --check` |
-| `docker` | `docker build`, start the container, assert `GET /health` returns 200. This is the gate that proves the native addon loads on `linux-x64`. |
-| `secrets` | `gitleaks` scan on the diff |
-| `packs` | Validate every file in `rule-packs/` against the pack schema |
+| Job       | Runs                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `test`    | Node 22 and 24 matrix on `ubuntu-latest`: `npm ci`, `npm test`, coverage summary                                                           |
+| `lint`    | ESLint plus `prettier --check`                                                                                                             |
+| `docker`  | `docker build`, start the container, assert `GET /health` returns 200. This is the gate that proves the native addon loads on `linux-x64`. |
+| `secrets` | `gitleaks` scan on the diff                                                                                                                |
+| `packs`   | Validate every file in `rule-packs/` against the pack schema                                                                               |
 
 Triggers: pull requests to `main`, and pushes to `main`.
 

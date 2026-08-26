@@ -19,8 +19,10 @@ function manager(overrides = {}) {
     audit: {
       open: (meetingId, reason) => audit.push({ type: 'open', meetingId, reason }),
       close: (meetingId, reason) => audit.push({ type: 'close', meetingId, reason }),
-      coverageGap: (meetingId, timestamp) => audit.push({ type: 'coverage_gap', meetingId, timestamp }),
-      attendance: (meetingId, participants) => audit.push({ type: 'attendance', meetingId, participants }),
+      coverageGap: (meetingId, timestamp) =>
+        audit.push({ type: 'coverage_gap', meetingId, timestamp }),
+      attendance: (meetingId, participants) =>
+        audit.push({ type: 'attendance', meetingId, participants }),
     },
     ...overrides,
   });
@@ -154,7 +156,8 @@ describe('stream failover', () => {
 
     m.startStream(rtmsStartedPayload().payload);
     m.startStream(
-      rtmsStartedPayload({ meeting_uuid: 'meeting-uuid-bbb', rtms_stream_id: 'stream-id-999' }).payload,
+      rtmsStartedPayload({ meeting_uuid: 'meeting-uuid-bbb', rtms_stream_id: 'stream-id-999' })
+        .payload,
     );
 
     assert.equal(m.activeStreamCount(), 2);
@@ -193,7 +196,9 @@ describe('stopping a stream', () => {
   test('should tolerate a stop for a stream it never tracked', () => {
     const m = manager();
 
-    assert.doesNotThrow(() => m.stopStream(rtmsStoppedPayload({ rtms_stream_id: 'unknown' }).payload));
+    assert.doesNotThrow(() =>
+      m.stopStream(rtmsStoppedPayload({ rtms_stream_id: 'unknown' }).payload),
+    );
   });
 
   test('should close the audit chain when onLeave fires without a stop webhook', () => {

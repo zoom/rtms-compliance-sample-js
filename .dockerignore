@@ -1,0 +1,23 @@
+# Never send credentials into the build context.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Installed fresh inside the image.
+node_modules
+web/node_modules
+
+# Built inside the image.
+web/dist
+src/db/generated
+dist
+build
+
+.git
+.github
+coverage
+tests
+*.log
+.DS_Store

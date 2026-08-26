@@ -47,7 +47,9 @@ export function parseVerdict(raw) {
 
   // Prefer a fenced block; fall back to the first balanced-looking object.
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fenced ? fenced[1].trim() : text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+  const candidate = fenced
+    ? fenced[1].trim()
+    : text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
 
   if (!candidate || !candidate.startsWith('{')) {
     throw new Error(`model output contained no JSON object: ${text.slice(0, 120)}`);
@@ -57,7 +59,7 @@ export function parseVerdict(raw) {
   try {
     parsed = JSON.parse(candidate);
   } catch (err) {
-    throw new Error(`model output was not valid JSON: ${err.message}`);
+    throw new Error(`model output was not valid JSON: ${err.message}`, { cause: err });
   }
 
   if (typeof parsed.violation !== 'boolean') {
@@ -76,7 +78,10 @@ export function parseVerdict(raw) {
 function withTimeout(promise, timeoutMs) {
   let timer;
   const timeout = new Promise((_resolve, reject) => {
-    timer = setTimeout(() => reject(new Error(`adjudication timed out after ${timeoutMs}ms`)), timeoutMs);
+    timer = setTimeout(
+      () => reject(new Error(`adjudication timed out after ${timeoutMs}ms`)),
+      timeoutMs,
+    );
   });
 
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));

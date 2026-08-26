@@ -21,7 +21,10 @@ export function nowSeconds(offsetSeconds = 0) {
  * Build a signed webhook delivery: raw bytes plus the headers Zoom would set.
  * Returns the raw Buffer so tests can prove verification uses exact bytes.
  */
-export function signedDelivery(payloadObject, { secret = TEST_SECRET, timestamp = nowSeconds() } = {}) {
+export function signedDelivery(
+  payloadObject,
+  { secret = TEST_SECRET, timestamp = nowSeconds() } = {},
+) {
   const rawBody = Buffer.from(JSON.stringify(payloadObject), 'utf8');
   return {
     rawBody,

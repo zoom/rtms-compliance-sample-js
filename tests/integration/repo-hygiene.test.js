@@ -51,7 +51,10 @@ describe('Zoom for Government', () => {
 
     // Without this guard the assertion below passes vacuously before any
     // source exists, which would report coverage the suite does not have.
-    assert.ok(sourceFiles.length > 0, 'src/ must contain source files for this check to mean anything');
+    assert.ok(
+      sourceFiles.length > 0,
+      'src/ must contain source files for this check to mean anything',
+    );
 
     const offenders = sourceFiles
       .filter((file) => !file.endsWith(path.join('src', 'config.js')))

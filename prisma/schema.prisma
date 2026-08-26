@@ -1,0 +1,73 @@
+// Transcripts and audit records are deliberately separate tables with
+// different lifecycles. Transcript data is client content subject to your
+// retention schedule. Audit records are evidence of supervision, usually
+// retained far longer. You must be able to expire one without destroying the
+// other, which is why nothing here cascades between them.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/db/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Meeting {
+  id              String    @id
+  topic           String?
+  rulePackVersion String
+  representativeId String?
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+
+  segments TranscriptSegment[]
+
+  @@index([startedAt])
+}
+
+model TranscriptSegment {
+  id           String   @id @default(uuid())
+  meetingId    String
+  seqNo        Int
+  speakerId    Int?
+  speakerLabel String
+  text         String
+  tStartMs     BigInt
+  createdAt    DateTime @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  // Idempotency: a replayed segment updates in place instead of duplicating.
+  @@unique([meetingId, seqNo])
+  @@index([meetingId, seqNo])
+}
+
+// Append-only. There is no update path in the application, and there should
+// be none in the database role either: grant INSERT and SELECT, not UPDATE or
+// DELETE. A correction is a new row carrying correctsId.
+//
+// No relation to Meeting: a foreign key with a cascade would let deleting a
+// meeting destroy the audit chain, which is exactly what this table exists to
+// prevent.
+model AuditRecord {
+  id              String   @id
+  meetingId       String
+  kind            String
+  seqNo           Int?
+  ruleId          String?
+  rulePackVersion String
+  severity        String?
+  quote           String?
+  verdict         String?
+  modelId         String?
+  correctsId      String?
+  occurredAt      BigInt
+  prevHash        String   @db.Char(64)
+  hash            String   @db.Char(64)
+  createdAt       DateTime @default(now())
+
+  @@index([meetingId, createdAt])
+  @@index([hash])
+}

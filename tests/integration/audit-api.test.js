@@ -73,7 +73,8 @@ async function call(router, { method = 'GET', path, token }) {
 
 let store;
 let router;
-const validToken = () => jwt.sign({ meetingId: MEETING, userId: 42, role: 'representative' }, JWT_SECRET);
+const validToken = () =>
+  jwt.sign({ meetingId: MEETING, userId: 42, role: 'representative' }, JWT_SECRET);
 
 beforeEach(() => {
   store = memoryStore();
@@ -104,7 +105,11 @@ describe('GET /api/meetings/:id/audit', () => {
 
     const res = await call(router, { path: `/api/meetings/${MEETING}/audit`, token: validToken() });
 
-    assert.equal(res.statusCode, 200, 'the endpoint still answers; the chain reports itself invalid');
+    assert.equal(
+      res.statusCode,
+      200,
+      'the endpoint still answers; the chain reports itself invalid',
+    );
     assert.equal(res.body.verification.valid, false);
     assert.equal(res.body.verification.firstInvalidId, 'rec-2');
   });
@@ -118,7 +123,10 @@ describe('GET /api/meetings/:id/audit', () => {
       JWT_SECRET,
     );
 
-    const res = await call(router, { path: '/api/meetings/no-such-meeting/audit', token: scopedToken });
+    const res = await call(router, {
+      path: '/api/meetings/no-such-meeting/audit',
+      token: scopedToken,
+    });
 
     assert.equal(res.statusCode, 200, 'an empty chain is a valid answer, not an error');
     assert.deepEqual(res.body.records, []);
@@ -135,7 +143,10 @@ describe('GET /api/meetings/:id/audit', () => {
 
   test('should reject a token scoped to a different meeting', async () => {
     seed(store, 1);
-    const otherToken = jwt.sign({ meetingId: 'meeting-uuid-bbb', userId: 42, role: 'representative' }, JWT_SECRET);
+    const otherToken = jwt.sign(
+      { meetingId: 'meeting-uuid-bbb', userId: 42, role: 'representative' },
+      JWT_SECRET,
+    );
 
     const res = await call(router, { path: `/api/meetings/${MEETING}/audit`, token: otherToken });
 

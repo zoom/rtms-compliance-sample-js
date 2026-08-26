@@ -10,6 +10,9 @@
   "scripts": {
     "start": "node --env-file=.env src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
     "test": "node --test --test-reporter=spec \"tests/**/*.test.js\"",
     "test:unit": "node --test --test-reporter=spec \"tests/unit/*.test.js\"",
     "test:integration": "node --test --test-reporter=spec \"tests/integration/*.test.js\"",
@@ -19,15 +22,17 @@
     "packs:validate": "node scripts/validate-packs.js"
   },
   "dependencies": {
+    "@prisma/client": "^6.14.0",
     "@zoom/rtms": "^1.1.0",
     "express": "^5.1.0",
-    "ws": "^8.18.0",
-    "yaml": "^2.8.0",
     "jsonwebtoken": "^9.0.2",
-    "@prisma/client": "^6.14.0"
+    "ws": "^8.18.0",
+    "yaml": "^2.8.0"
   },
   "devDependencies": {
-    "eslint": "^9.34.0",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.1",
+    "globals": "^17.11.0",
     "prettier": "^3.6.0",
     "prisma": "^6.14.0"
   },

@@ -11,7 +11,10 @@ describe('createSegmentNormalizer', () => {
     const text = 'We can offer a guaranteed return on this fund';
     const buffer = Buffer.from(text, 'utf8');
 
-    const segment = normalize(buffer, buffer.length, 1756200001000, { userId: 42, userName: 'Rep' });
+    const segment = normalize(buffer, buffer.length, 1756200001000, {
+      userId: 42,
+      userName: 'Rep',
+    });
 
     assert.equal(segment.text, text);
     assert.equal(typeof segment.text, 'string');
@@ -22,7 +25,10 @@ describe('createSegmentNormalizer', () => {
     const text = 'garantía del 8 % — sin riesgo';
     const buffer = Buffer.from(text, 'utf8');
 
-    const segment = normalize(buffer, buffer.length, 1756200001000, { userId: 42, userName: 'Rep' });
+    const segment = normalize(buffer, buffer.length, 1756200001000, {
+      userId: 42,
+      userName: 'Rep',
+    });
 
     assert.equal(segment.text, text);
   });
@@ -68,7 +74,10 @@ describe('createSegmentNormalizer', () => {
     const normalize = createSegmentNormalizer();
     const buffer = Buffer.from('hello', 'utf8');
 
-    const segment = normalize(buffer, buffer.length, 1756200001000, { userId: 99, userName: 'Dana Rep' });
+    const segment = normalize(buffer, buffer.length, 1756200001000, {
+      userId: 99,
+      userName: 'Dana Rep',
+    });
 
     assert.equal(segment.speakerId, 99);
     assert.equal(segment.speakerLabel, 'Dana Rep');

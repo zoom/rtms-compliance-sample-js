@@ -8,9 +8,7 @@
     "usage": "USER_OPERATION",
     "development_redirect_uri": "https://YOUR-NGROK-URL/api/auth/callback",
     "production_redirect_uri": "https://YOUR-PRODUCTION-URL/api/auth/callback",
-    "oauth_allow_list": [
-      "https://YOUR-NGROK-URL"
-    ],
+    "oauth_allow_list": ["https://YOUR-NGROK-URL"],
     "scopes": [
       {
         "scope": "zoomapp:inmeeting",
@@ -80,10 +78,7 @@
       "events": [
         {
           "subscription_name": "RTMS Events",
-          "event_types": [
-            "meeting.rtms_started",
-            "meeting.rtms_stopped"
-          ],
+          "event_types": ["meeting.rtms_started", "meeting.rtms_stopped"],
           "development_webhook_url": "https://YOUR-NGROK-URL/api/rtms/webhook",
           "production_webhook_url": "https://YOUR-PRODUCTION-URL/api/rtms/webhook"
         }

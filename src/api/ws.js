@@ -137,7 +137,7 @@ export function createAlertHub({ jwtSecret, onDismiss, logger = console }) {
       meetingState.set(meetingId, { ...EMPTY_STATE, ...state });
     },
 
-    subscriberCount: (meetingId) => (subscribers.get(meetingId)?.size ?? 0),
+    subscriberCount: (meetingId) => subscribers.get(meetingId)?.size ?? 0,
 
     /** Drop retained state once a meeting's chain is closed. */
     forget(meetingId) {

@@ -8,11 +8,11 @@ This repo is a reference implementation for the [Real-Time Compliance Advisor bl
 
 ## Requirements
 
-| Requirement | Why |
-|---|---|
-| Node.js >= 22, 24 LTS recommended | `@zoom/rtms` uses N-API 9/10. Older versions segfault at import. |
-| `darwin-arm64` or `linux-x64` | The only platforms with prebuilt SDK binaries. |
-| Docker | Postgres for local development, and the container build the CI gate runs. |
+| Requirement                       | Why                                                                       |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| Node.js >= 22, 24 LTS recommended | `@zoom/rtms` uses N-API 9/10. Older versions segfault at import.          |
+| `darwin-arm64` or `linux-x64`     | The only platforms with prebuilt SDK binaries.                            |
+| Docker                            | Postgres for local development, and the container build the CI gate runs. |
 
 ## Setup
 

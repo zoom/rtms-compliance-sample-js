@@ -44,7 +44,10 @@ describe('loadPack', () => {
     assert.ok(Array.isArray(rule.patterns));
     assert.equal(rule.patterns.length, 2);
     for (const pattern of rule.patterns) {
-      assert.ok(pattern instanceof RegExp, 'patterns must be compiled once at load, not per segment');
+      assert.ok(
+        pattern instanceof RegExp,
+        'patterns must be compiled once at load, not per segment',
+      );
     }
   });
 

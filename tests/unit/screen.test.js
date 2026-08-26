@@ -50,10 +50,10 @@ describe('createScreener', () => {
     );
 
     assert.equal(candidates.length, 2, 'must not stop at the first match');
-    assert.deepEqual(
-      candidates.map((c) => c.ruleId).sort(),
-      ['guaranteed-return', 'unapproved-projection'],
-    );
+    assert.deepEqual(candidates.map((c) => c.ruleId).sort(), [
+      'guaranteed-return',
+      'unapproved-projection',
+    ]);
   });
 
   test('should produce zero candidates for a clean segment', () => {
@@ -86,7 +86,10 @@ describe('createScreener', () => {
     const screener = createScreener(loadPack(FIXTURE_PACK), { suppressionWindowSeconds: 60 });
 
     const first = screener.screen(segment('a guaranteed return', { seqNo: 0 }), T0);
-    const repeat = screener.screen(segment('again, a guaranteed return', { seqNo: 1 }), T0 + 59_000);
+    const repeat = screener.screen(
+      segment('again, a guaranteed return', { seqNo: 1 }),
+      T0 + 59_000,
+    );
 
     assert.equal(first.length, 1);
     assert.deepEqual(repeat, []);
@@ -116,14 +119,21 @@ describe('createScreener', () => {
 
     screener.screen(segment('a guaranteed return', { seqNo: 0 }), T0);
 
-    assert.deepEqual(screener.screen(segment('a guaranteed return', { seqNo: 1 }), T0 + 60_000), []);
+    assert.deepEqual(
+      screener.screen(segment('a guaranteed return', { seqNo: 1 }), T0 + 60_000),
+      [],
+    );
   });
 });
 
 describe('screening latency', () => {
   test('should screen a 200 character segment against the shipped pack in under 5ms', () => {
     const screener = createScreener(loadPack(SHIPPED_PACK), { suppressionWindowSeconds: 60 });
-    const text = 'thank you for your time today, let me walk through the allocation and the fee schedule before we talk about performance over the last decade and what that means for your particular situation'.slice(0, 200);
+    const text =
+      'thank you for your time today, let me walk through the allocation and the fee schedule before we talk about performance over the last decade and what that means for your particular situation'.slice(
+        0,
+        200,
+      );
     const input = segment(text);
 
     // Warm up so the measurement is not dominated by first-call JIT.

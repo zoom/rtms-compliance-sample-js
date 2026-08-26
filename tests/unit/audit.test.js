@@ -1,7 +1,12 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { GENESIS_HASH, canonicalize, buildAuditRecord, verifyChain } from '../../src/compliance/audit.js';
+import {
+  GENESIS_HASH,
+  canonicalize,
+  buildAuditRecord,
+  verifyChain,
+} from '../../src/compliance/audit.js';
 
 // Acceptance criteria 35-41.
 
@@ -172,7 +177,12 @@ describe('verifyChain', () => {
 
   test('should detect a record appended with a forged prevHash', () => {
     const chain = buildChain('meeting-1', [baseRecord({ id: 'rec-1', seqNo: 1 })]);
-    chain.push({ ...baseRecord({ id: 'rec-forged', seqNo: 2 }), meetingId: 'meeting-1', prevHash: GENESIS_HASH, hash: 'f'.repeat(64) });
+    chain.push({
+      ...baseRecord({ id: 'rec-forged', seqNo: 2 }),
+      meetingId: 'meeting-1',
+      prevHash: GENESIS_HASH,
+      hash: 'f'.repeat(64),
+    });
 
     assert.equal(verifyChain(chain).valid, false);
   });

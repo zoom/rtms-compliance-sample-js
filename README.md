@@ -12,13 +12,13 @@ Reference implementation for the [Real-Time Compliance Advisor in Meetings](http
 
 ## What it does
 
-| | |
-|---|---|
-| **Screens** | Every transcript segment against a compiled rule pack, under 5ms, no network call |
-| **Adjudicates** | Only matched candidates go to an LLM, which judges context and drafts a correction |
-| **Tracks** | Required disclosures, marked satisfied only when the representative says them, with the quote as evidence |
-| **Escalates** | High-severity alerts POST to a supervisor webhook while the meeting is still live |
-| **Records** | An append-only, hash-chained audit log including gaps in coverage |
+|                 |                                                                                                           |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| **Screens**     | Every transcript segment against a compiled rule pack, under 5ms, no network call                         |
+| **Adjudicates** | Only matched candidates go to an LLM, which judges context and drafts a correction                        |
+| **Tracks**      | Required disclosures, marked satisfied only when the representative says them, with the quote as evidence |
+| **Escalates**   | High-severity alerts POST to a supervisor webhook while the meeting is still live                         |
+| **Records**     | An append-only, hash-chained audit log including gaps in coverage                                         |
 
 ### Why two stages
 
@@ -30,13 +30,13 @@ The practical benefit is cost: clean segments never reach the LLM, so spend trac
 
 ## Requirements
 
-| Requirement | Notes |
-|---|---|
-| **Node.js >= 22** | `@zoom/rtms` uses N-API 9/10. Node 24 LTS recommended. A lower version segfaults on import rather than failing cleanly. |
-| **`darwin-arm64` or `linux-x64`** | The platforms with prebuilt SDK binaries. |
-| **Paid Zoom Workplace plan with RTMS** | [Request RTMS access](https://www.zoom.com/en/realtime-media-streams/#form). |
-| **Docker** | Postgres locally, and the container build CI gates on. |
-| **ngrok or equivalent** | A public HTTPS URL Zoom can deliver webhooks to. |
+| Requirement                            | Notes                                                                                                                   |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Node.js >= 22**                      | `@zoom/rtms` uses N-API 9/10. Node 24 LTS recommended. A lower version segfaults on import rather than failing cleanly. |
+| **`darwin-arm64` or `linux-x64`**      | The platforms with prebuilt SDK binaries.                                                                               |
+| **Paid Zoom Workplace plan with RTMS** | [Request RTMS access](https://www.zoom.com/en/realtime-media-streams/#form).                                            |
+| **Docker**                             | Postgres locally, and the container build CI gates on.                                                                  |
+| **ngrok or equivalent**                | A public HTTPS URL Zoom can deliver webhooks to.                                                                        |
 
 ---
 
@@ -87,10 +87,10 @@ cp .env.example .env   # fill in your values
 
 ### Deploy
 
-| Platform | |
-|---|---|
+| Platform                                                                                             |                             |
+| ---------------------------------------------------------------------------------------------------- | --------------------------- |
 | [Deploy to Render](https://render.com/deploy?repo=https://github.com/zoom/rtms-compliance-sample-js) | Backend, frontend, database |
-| [Deploy to Railway](https://railway.app/new?repo=https://github.com/zoom/rtms-compliance-sample-js) | Backend, frontend, database |
+| [Deploy to Railway](https://railway.app/new?repo=https://github.com/zoom/rtms-compliance-sample-js)  | Backend, frontend, database |
 
 **Deploy anywhere:** the [Dockerfile](Dockerfile) is platform-agnostic. It must stay on a glibc base; Alpine's musl libc cannot load the RTMS native addon.
 
@@ -113,20 +113,20 @@ Zoom Meeting ──1. webhook──▶ Express + @zoom/rtms
                                     └─7. append────▶ Audit Log (hash-chained)
 ```
 
-| Path | What lives there |
-|---|---|
-| `src/config.js` | Environment parsing, fail-fast validation. **The only file allowed to contain a Zoom hostname.** |
-| `src/rtms/webhook.js` | HMAC verification, URL validation challenge, event routing. Pure functions. |
-| `src/rtms/session.js` | Client lifecycle, callback wiring, failover, coverage gaps |
-| `src/rtms/segments.js` | Buffer decode, sequence numbering, speaker defaults |
-| `src/compliance/packs.js` | YAML load, schema validation, pattern compilation. Fails closed. |
-| `src/compliance/screen.js` | Deterministic pass and the suppression window |
-| `src/compliance/adjudicate.js` | Prompt construction, verdict parsing, timeout degradation |
-| `src/compliance/disclosures.js` | Checklist state machine |
-| `src/compliance/audit.js` | Canonical serialization, hash chain, verification |
-| `src/api/ws.js` | Authenticated fan-out and the alert authorization rule |
-| `src/api/routes.js` | Audit export |
-| `rule-packs/` | Versioned YAML packs |
+| Path                            | What lives there                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `src/config.js`                 | Environment parsing, fail-fast validation. **The only file allowed to contain a Zoom hostname.** |
+| `src/rtms/webhook.js`           | HMAC verification, URL validation challenge, event routing. Pure functions.                      |
+| `src/rtms/session.js`           | Client lifecycle, callback wiring, failover, coverage gaps                                       |
+| `src/rtms/segments.js`          | Buffer decode, sequence numbering, speaker defaults                                              |
+| `src/compliance/packs.js`       | YAML load, schema validation, pattern compilation. Fails closed.                                 |
+| `src/compliance/screen.js`      | Deterministic pass and the suppression window                                                    |
+| `src/compliance/adjudicate.js`  | Prompt construction, verdict parsing, timeout degradation                                        |
+| `src/compliance/disclosures.js` | Checklist state machine                                                                          |
+| `src/compliance/audit.js`       | Canonical serialization, hash chain, verification                                                |
+| `src/api/ws.js`                 | Authenticated fan-out and the alert authorization rule                                           |
+| `src/api/routes.js`             | Audit export                                                                                     |
+| `rule-packs/`                   | Versioned YAML packs                                                                             |
 
 ### Details worth knowing if you are adapting this
 
@@ -147,21 +147,21 @@ Zoom Meeting ──1. webhook──▶ Express + @zoom/rtms
 A rule pack is the contract between your compliance team and this code. Compliance owns the YAML; engineering owns the loader.
 
 ```yaml
-id: fin-us-retail-v3          # version suffix required; never edit in place
+id: fin-us-retail-v3 # version suffix required; never edit in place
 jurisdiction: US
 applies_to: [retail-investment-review]
 
 prohibited:
   - id: guaranteed-return
-    severity: high            # high | medium | low
-    match: ["guaranteed returns?", "risk[- ]free"]
-    guidance: "Past performance does not guarantee future results."
+    severity: high # high | medium | low
+    match: ['guaranteed returns?', 'risk[- ]free']
+    guidance: 'Past performance does not guarantee future results.'
 
 required_disclosures:
   - id: fees-and-conflicts
     severity: high
-    satisfied_by: ["advisory fee", "conflict of interest"]
-    prompt: "State the advisory fee schedule and any conflicts of interest."
+    satisfied_by: ['advisory fee', 'conflict of interest']
+    prompt: 'State the advisory fee schedule and any conflicts of interest.'
 ```
 
 `match` and `satisfied_by` entries are case-insensitive regular expressions, compiled once at load.
@@ -216,22 +216,22 @@ Built test-first from [spec.md](spec.md); every acceptance criterion there maps 
 
 Everything below is simplified for a sample. None of it is hidden.
 
-| Simplification here | What production needs |
-|---|---|
-| `.env` file for credentials | AWS Secrets Manager, HashiCorp Vault, or platform secret storage |
-| Single-instance in-memory session map | Redis, so a restart does not orphan joined streams or lose sequence counters |
-| Single-instance WebSocket broadcast | Redis pub/sub fan-out |
-| Audit records in the same Postgres as app data | Separate database, distinct credential, WORM or object-lock backups |
-| Hash chain with no external anchoring | Publish chain heads periodically to an append-only external store or timestamping authority |
-| Rule packs from local disk | Versioned artifact from a registry, with a compliance sign-off gate in CI |
-| Synchronous LLM adjudication in the request path | Job queue with a bounded worker pool and backpressure |
-| One LLM call, fixed timeout, no retry | Exponential backoff with jitter, plus a circuit breaker |
-| No LLM rate-limit handling | Detect 429, back off, degrade to deterministic-only screening **and write a coverage-gap record** |
-| Supervisor webhook is fire-and-forget | Durable outbox with retries and a dead-letter path |
-| No transcript retention enforcement | Scheduled deletion aligned to your retention schedule, separate from the audit chain |
-| No PII or PHI redaction before LLM egress | Redact or tokenize before egress, or run inference inside your own boundary |
-| Audit export authorized by the meeting JWT | Role-based access control. Auditors are not meeting participants. |
-| Migrations applied at container start | A gated migration step in the deploy pipeline |
+| Simplification here                              | What production needs                                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `.env` file for credentials                      | AWS Secrets Manager, HashiCorp Vault, or platform secret storage                                  |
+| Single-instance in-memory session map            | Redis, so a restart does not orphan joined streams or lose sequence counters                      |
+| Single-instance WebSocket broadcast              | Redis pub/sub fan-out                                                                             |
+| Audit records in the same Postgres as app data   | Separate database, distinct credential, WORM or object-lock backups                               |
+| Hash chain with no external anchoring            | Publish chain heads periodically to an append-only external store or timestamping authority       |
+| Rule packs from local disk                       | Versioned artifact from a registry, with a compliance sign-off gate in CI                         |
+| Synchronous LLM adjudication in the request path | Job queue with a bounded worker pool and backpressure                                             |
+| One LLM call, fixed timeout, no retry            | Exponential backoff with jitter, plus a circuit breaker                                           |
+| No LLM rate-limit handling                       | Detect 429, back off, degrade to deterministic-only screening **and write a coverage-gap record** |
+| Supervisor webhook is fire-and-forget            | Durable outbox with retries and a dead-letter path                                                |
+| No transcript retention enforcement              | Scheduled deletion aligned to your retention schedule, separate from the audit chain              |
+| No PII or PHI redaction before LLM egress        | Redact or tokenize before egress, or run inference inside your own boundary                       |
+| Audit export authorized by the meeting JWT       | Role-based access control. Auditors are not meeting participants.                                 |
+| Migrations applied at container start            | A gated migration step in the deploy pipeline                                                     |
 
 **This is engineering guidance, not legal advice.** Rule pack content, retention periods, and supervision workflows must be reviewed and approved by your compliance and legal teams.
 

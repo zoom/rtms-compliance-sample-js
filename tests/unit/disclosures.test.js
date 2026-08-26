@@ -162,9 +162,9 @@ describe('createDisclosureTracker', () => {
 
     t.evaluate([segment('this meeting is being recorded', { seqNo: 1 })]);
 
-    const pendingHigh = t.state().filter(
-      (d) => d.status === DISCLOSURE_STATE.PENDING && d.severity === 'high',
-    );
+    const pendingHigh = t
+      .state()
+      .filter((d) => d.status === DISCLOSURE_STATE.PENDING && d.severity === 'high');
     assert.deepEqual(
       pendingHigh.map((d) => d.id),
       ['fees-and-conflicts'],

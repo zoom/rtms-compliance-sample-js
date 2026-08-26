@@ -1,7 +1,12 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildPrompt, parseVerdict, adjudicate, PROMPT_VERSION } from '../../src/compliance/adjudicate.js';
+import {
+  buildPrompt,
+  parseVerdict,
+  adjudicate,
+  PROMPT_VERSION,
+} from '../../src/compliance/adjudicate.js';
 
 // Acceptance criteria 25-30.
 
@@ -27,10 +32,12 @@ const VALID_VERDICT = {
   suggested_language: 'Past performance does not guarantee future results.',
 };
 
-const llmReturning = (raw, { delayMs = 0 } = {}) => async () => {
-  if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
-  return raw;
-};
+const llmReturning =
+  (raw, { delayMs = 0 } = {}) =>
+  async () => {
+    if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return raw;
+  };
 
 describe('buildPrompt', () => {
   test('should include the rule guidance so suggestions match approved language', () => {

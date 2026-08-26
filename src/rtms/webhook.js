@@ -18,8 +18,8 @@ const TIMESTAMP_HEADER = 'x-zm-request-timestamp';
  *
  * The signature covers `v0:{timestamp}:{rawBody}`, where rawBody is the exact
  * bytes Zoom sent. Re-serializing a parsed body produces different bytes and
- * therefore a different HMAC, so callers must preserve the raw buffer (see
- * the express.json({ verify }) hook in server.js).
+ * therefore a different HMAC, so callers must preserve the raw buffer. The
+ * webhook route in server.js uses express.raw() for exactly this reason.
  *
  * @param {Buffer|string} rawBody exact request bytes
  * @param {string} timestamp value of x-zm-request-timestamp
@@ -38,8 +38,7 @@ export function verifySignature(rawBody, timestamp, signature, secret) {
 
   const body = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody);
   const expected =
-    'v0=' +
-    crypto.createHmac('sha256', secret).update(`v0:${timestamp}:${body}`).digest('hex');
+    'v0=' + crypto.createHmac('sha256', secret).update(`v0:${timestamp}:${body}`).digest('hex');
 
   // timingSafeEqual throws on length mismatch, so compare lengths first. The
   // length of a signature is not a secret.

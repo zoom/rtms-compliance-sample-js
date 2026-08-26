@@ -1,0 +1,259 @@
+/* Sized for the Zoom Apps side panel, which is narrow and tall. */
+
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --surface: #f9fafb;
+
+  --high: #b91c1c;
+  --high-bg: #fef2f2;
+  --medium: #b45309;
+  --medium-bg: #fffbeb;
+  --low: #4b5563;
+  --low-bg: #f3f4f6;
+  --ok: #15803d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+.app {
+  padding: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0;
+}
+
+h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--low-bg);
+  color: var(--muted);
+}
+
+.status-connected {
+  background: #ecfdf5;
+  color: var(--ok);
+}
+
+.status-unauthorized,
+.status-error {
+  background: var(--high-bg);
+  color: var(--high);
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--bg);
+}
+
+.count {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.empty {
+  color: var(--muted);
+  margin: 0;
+  font-style: italic;
+}
+
+.warning {
+  color: var(--medium);
+  background: var(--medium-bg);
+  padding: 8px;
+  border-radius: 6px;
+  margin: 0 0 8px;
+}
+
+ul,
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Alerts */
+
+.alert-list li {
+  border-left: 3px solid var(--low);
+  border-radius: 0 6px 6px 0;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--low-bg);
+}
+
+.alert-high {
+  border-left-color: var(--high);
+  background: var(--high-bg);
+}
+
+.alert-medium {
+  border-left-color: var(--medium);
+  background: var(--medium-bg);
+}
+
+.alert-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.rule-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.badge {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--low-bg);
+  color: var(--low);
+}
+
+.badge-high {
+  background: var(--high);
+  color: #fff;
+}
+
+.badge-medium {
+  background: var(--medium);
+  color: #fff;
+}
+
+.badge-unverified {
+  border: 1px dashed var(--muted);
+  background: transparent;
+}
+
+blockquote {
+  margin: 0 0 6px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  color: var(--fg);
+}
+
+.rationale {
+  margin: 0 0 6px;
+  color: var(--muted);
+}
+
+.suggestion {
+  margin: 0 0 8px;
+}
+
+button {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--surface);
+}
+
+/* Disclosures */
+
+.disclosure {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.disclosure:last-child {
+  border-bottom: none;
+}
+
+.disclosure-head {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.disclosure-satisfied .disclosure-head span:first-child {
+  color: var(--ok);
+}
+
+.disclosure-pending .disclosure-head span:first-child {
+  color: var(--muted);
+}
+
+.prompt {
+  margin: 2px 0 0 18px;
+  color: var(--muted);
+}
+
+.disclosure blockquote {
+  margin: 2px 0 0 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Transcript */
+
+.transcript {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.segment-list li {
+  margin-bottom: 4px;
+}
+
+.speaker {
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.disclaimer {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}

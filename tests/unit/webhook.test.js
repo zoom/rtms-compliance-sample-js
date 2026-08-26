@@ -20,7 +20,10 @@ describe('verifySignature', () => {
     const rawBody = Buffer.from('{"event":"meeting.rtms_started"}', 'utf8');
     const timestamp = nowSeconds();
 
-    assert.equal(verifySignature(rawBody, timestamp, signBody(rawBody, timestamp), TEST_SECRET), true);
+    assert.equal(
+      verifySignature(rawBody, timestamp, signBody(rawBody, timestamp), TEST_SECRET),
+      true,
+    );
   });
 
   test('should reject a signature computed with a different secret', () => {
@@ -51,7 +54,10 @@ describe('verifySignature', () => {
 
   test('should reject a non-numeric timestamp', () => {
     const rawBody = Buffer.from('{}');
-    assert.equal(verifySignature(rawBody, 'not-a-number', signBody(rawBody, 'not-a-number'), TEST_SECRET), false);
+    assert.equal(
+      verifySignature(rawBody, 'not-a-number', signBody(rawBody, 'not-a-number'), TEST_SECRET),
+      false,
+    );
   });
 
   test('should reject a timestamp older than the 300 second replay window', () => {
@@ -85,7 +91,12 @@ describe('verifySignature', () => {
 
     assert.equal(verifySignature(rawBody, timestamp, signature, TEST_SECRET), true);
     assert.equal(
-      verifySignature(Buffer.from(JSON.stringify(JSON.parse(rawBody.toString()))), timestamp, signature, TEST_SECRET),
+      verifySignature(
+        Buffer.from(JSON.stringify(JSON.parse(rawBody.toString()))),
+        timestamp,
+        signature,
+        TEST_SECRET,
+      ),
       false,
       'a re-serialized body must not verify against the original signature',
     );
@@ -160,7 +171,9 @@ describe('handleWebhook', () => {
   });
 
   test('should return 401 and no action when the signature is invalid', () => {
-    const { rawBody, headers } = signedDelivery(rtmsStartedPayload(), { secret: 'attacker_secret' });
+    const { rawBody, headers } = signedDelivery(rtmsStartedPayload(), {
+      secret: 'attacker_secret',
+    });
 
     const result = handleWebhook({ rawBody, headers, secret: TEST_SECRET });
 
@@ -169,7 +182,9 @@ describe('handleWebhook', () => {
   });
 
   test('should return 401 and no action when the timestamp is stale', () => {
-    const { rawBody, headers } = signedDelivery(rtmsStartedPayload(), { timestamp: nowSeconds(-600) });
+    const { rawBody, headers } = signedDelivery(rtmsStartedPayload(), {
+      timestamp: nowSeconds(-600),
+    });
 
     const result = handleWebhook({ rawBody, headers, secret: TEST_SECRET });
 

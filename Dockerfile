@@ -14,16 +14,29 @@ FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 
 # Backend dependencies. Copy manifests first so the layer caches on lockfile
-# changes only.
+# changes only. Dev dependencies are needed here for the Prisma CLI and the
+# Vite build; they are pruned before the runtime stage copies node_modules.
+#
+# The schema must be present before npm ci, because postinstall runs
+# `prisma generate`.
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+COPY prisma ./prisma
+RUN npm ci
 
-# Frontend build. Dev dependencies are needed here and discarded with the stage.
+# Frontend build.
 COPY web/package.json web/package-lock.json ./web/
 RUN npm --prefix web ci
 
 COPY web ./web
 RUN npm --prefix web run build
+
+# Generate the Prisma client into src/db/generated. It is gitignored, so it
+# must be produced here rather than copied from the build context.
+COPY src ./src
+RUN npx prisma generate
+
+# Drop dev dependencies now that the build is done.
+RUN npm prune --omit=dev
 
 # ─── Stage 2: runtime ───────────────────────────────────────────────────────
 FROM node:24-bookworm-slim AS runtime
@@ -37,8 +50,11 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/web/dist ./web/dist
 
+# src comes from the builder, not the build context: it carries the generated
+# Prisma client, which is gitignored and therefore absent from the context.
+COPY --from=builder /app/src ./src
+
 COPY package.json ./
-COPY src ./src
 COPY rule-packs ./rule-packs
 COPY prisma ./prisma
 

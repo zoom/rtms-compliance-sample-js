@@ -78,7 +78,9 @@ describe('WebSocket authentication', () => {
 
   test('should close a connection with an expired token', () => {
     const socket = fakeSocket();
-    const expired = jwt.sign({ meetingId: 'meeting-1', userId: REP_ID }, JWT_SECRET, { expiresIn: '-1s' });
+    const expired = jwt.sign({ meetingId: 'meeting-1', userId: REP_ID }, JWT_SECRET, {
+      expiresIn: '-1s',
+    });
 
     hub.connect(socket, { token: expired });
 
@@ -88,7 +90,9 @@ describe('WebSocket authentication', () => {
   test('should accept a valid token', () => {
     const socket = fakeSocket();
 
-    hub.connect(socket, { token: token({ meetingId: 'meeting-1', userId: REP_ID, role: 'representative' }) });
+    hub.connect(socket, {
+      token: token({ meetingId: 'meeting-1', userId: REP_ID, role: 'representative' }),
+    });
 
     assert.equal(socket.closed, null);
   });
@@ -101,7 +105,9 @@ describe('WebSocket authentication', () => {
 describe('subscription scoping', () => {
   test('should reject a subscribe to a meeting the token does not cover', () => {
     const socket = fakeSocket();
-    hub.connect(socket, { token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }) });
+    hub.connect(socket, {
+      token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }),
+    });
 
     hub.handleMessage(socket, { type: 'subscribe', meetingId: 'meeting-B' });
 
@@ -111,7 +117,9 @@ describe('subscription scoping', () => {
 
   test('should accept a subscribe to the meeting the token covers', () => {
     const socket = fakeSocket();
-    hub.connect(socket, { token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }) });
+    hub.connect(socket, {
+      token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }),
+    });
 
     hub.handleMessage(socket, { type: 'subscribe', meetingId: 'meeting-A' });
 
@@ -120,7 +128,9 @@ describe('subscription scoping', () => {
 
   test('should drop a subscription on disconnect', () => {
     const socket = fakeSocket();
-    hub.connect(socket, { token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }) });
+    hub.connect(socket, {
+      token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }),
+    });
     hub.handleMessage(socket, { type: 'subscribe', meetingId: 'meeting-A' });
 
     hub.disconnect(socket);
@@ -168,7 +178,9 @@ describe('alert authorization', () => {
 
   test('should not deliver an alert to a subscriber of a different meeting', () => {
     const other = fakeSocket();
-    hub.connect(other, { token: token({ meetingId: 'meeting-B', userId: REP_ID, role: 'representative' }) });
+    hub.connect(other, {
+      token: token({ meetingId: 'meeting-B', userId: REP_ID, role: 'representative' }),
+    });
     hub.handleMessage(other, { type: 'subscribe', meetingId: 'meeting-B' });
 
     hub.broadcastAlert('meeting-A', ALERT);
@@ -189,11 +201,15 @@ describe('reconnect behavior', () => {
   test('should send current alert state before incremental updates resume', () => {
     hub.setMeetingState('meeting-A', {
       alerts: [ALERT],
-      disclosures: [{ id: 'recording-consent', status: 'satisfied', quote: 'this meeting is being recorded' }],
+      disclosures: [
+        { id: 'recording-consent', status: 'satisfied', quote: 'this meeting is being recorded' },
+      ],
     });
 
     const rep = fakeSocket();
-    hub.connect(rep, { token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }) });
+    hub.connect(rep, {
+      token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }),
+    });
     hub.handleMessage(rep, { type: 'subscribe', meetingId: 'meeting-A' });
 
     const snapshot = rep.typed('state.snapshot');
@@ -205,7 +221,9 @@ describe('reconnect behavior', () => {
 
   test('should send an empty snapshot for a meeting with no state yet', () => {
     const rep = fakeSocket();
-    hub.connect(rep, { token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }) });
+    hub.connect(rep, {
+      token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }),
+    });
     hub.handleMessage(rep, { type: 'subscribe', meetingId: 'meeting-A' });
 
     const snapshot = rep.typed('state.snapshot')[0];
@@ -221,7 +239,9 @@ describe('dismissals', () => {
       onDismiss: (record) => written.push(record),
     });
     const rep = fakeSocket();
-    localHub.connect(rep, { token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }) });
+    localHub.connect(rep, {
+      token: token({ meetingId: 'meeting-A', userId: REP_ID, role: 'representative' }),
+    });
     localHub.handleMessage(rep, { type: 'subscribe', meetingId: 'meeting-A' });
 
     localHub.handleMessage(rep, {

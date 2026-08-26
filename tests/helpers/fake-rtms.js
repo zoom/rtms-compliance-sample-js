@@ -109,7 +109,11 @@ export function createFakeRtms() {
       this.callbacks.onLeave?.(reason);
     }
 
-    emitParticipantEvent(event = 1, timestamp = 1756200002000, participants = [{ userId: 42, userName: 'Rep Name' }]) {
+    emitParticipantEvent(
+      event = 1,
+      timestamp = 1756200002000,
+      participants = [{ userId: 42, userName: 'Rep Name' }],
+    ) {
       this.callbacks.onParticipantEvent?.(event, timestamp, participants);
     }
   }

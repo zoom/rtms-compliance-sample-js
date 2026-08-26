@@ -1,0 +1,49 @@
+# Local development stack.
+#
+# The app image must stay on a glibc base; see the Dockerfile. Postgres holds
+# transcripts and audit records in one database here, which is a documented
+# simplification. Production separates them so transcript retention cannot
+# delete evidence of supervision.
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: compliance
+      POSTGRES_PASSWORD: compliance
+      POSTGRES_DB: compliance
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U compliance']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://compliance:compliance@postgres:5432/compliance
+      PORT: 3000
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:

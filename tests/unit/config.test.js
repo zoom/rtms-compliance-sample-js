@@ -92,7 +92,10 @@ describe('Zoom for Government host derivation', () => {
   });
 
   test('should reject an unrecognized ZOOM_HOST rather than guessing', () => {
-    assert.throws(() => loadConfig(validEnv({ ZOOM_HOST: 'https://zoom.example.com' })), ConfigError);
+    assert.throws(
+      () => loadConfig(validEnv({ ZOOM_HOST: 'https://zoom.example.com' })),
+      ConfigError,
+    );
   });
 
   test('should tolerate a trailing slash on ZOOM_HOST', () => {
