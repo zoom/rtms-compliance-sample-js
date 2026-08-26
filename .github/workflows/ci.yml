@@ -73,22 +73,20 @@ jobs:
       - name: Boot the container and check health
         env:
           # Placeholder values. The container must start and serve /health
-          # without ever reaching Zoom.
+          # without ever reaching Zoom. NODE_ENV=production is set in the
+          # image, so nothing here is generated or defaulted: this step also
+          # proves production strictness accepts a complete environment.
           ZM_RTMS_CLIENT: ci-client-id
           ZM_RTMS_SECRET: ci-client-secret
           ZM_RTMS_WEBHOOK_SECRET: ci-webhook-secret
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
           PUBLIC_URL: https://ci.example.invalid
-          SESSION_SECRET: ci-session-secret-0000000000000000
           JWT_SECRET: ci-jwt-secret-000000000000000000000
-          TOKEN_ENCRYPTION_KEY: ci-token-key-00000000000000000000
           RULE_PACK_ID: fin-us-retail-v3
-          LLM_API_KEY: ci-llm-key
         run: |
           docker run -d --name compliance-ci -p 3000:3000 \
             -e ZM_RTMS_CLIENT -e ZM_RTMS_SECRET -e ZM_RTMS_WEBHOOK_SECRET \
-            -e DATABASE_URL -e PUBLIC_URL -e SESSION_SECRET -e JWT_SECRET \
-            -e TOKEN_ENCRYPTION_KEY -e RULE_PACK_ID -e LLM_API_KEY \
+            -e DATABASE_URL -e PUBLIC_URL -e JWT_SECRET -e RULE_PACK_ID \
             -e SKIP_DB_MIGRATE=true \
             rtms-compliance-sample:ci
 

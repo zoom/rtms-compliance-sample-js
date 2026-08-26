@@ -4,7 +4,7 @@ Backing sample for the [Real-Time Compliance Advisor in Meetings](https://github
 
 |                       |                                                                   |
 | --------------------- | ----------------------------------------------------------------- |
-| **Status**            | Spec. No implementation yet.                                      |
+| **Status**            | Implemented. 224 tests passing.                                   |
 | **Complexity target** | Production-ready sample                                           |
 | **Primary audience**  | Experienced developers at regulated firms                         |
 | **ZfG compatible**    | Yes, via configurable `ZOOM_HOST`                                 |
@@ -24,11 +24,11 @@ The app is deliberately opinionated in two ways. Screening is two-stage: a deter
 
 ## Zoom Products Used
 
-| Product                                                                                                        | Features demonstrated                                                                                                                                                                                                                                                                                                         |
-| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **[RTMS](https://developers.zoom.us/docs/rtms/)** via [`@zoom/rtms`](https://www.npmjs.com/package/@zoom/rtms) | `createWebhookHandler` mounted on Express; `Client.join`/`leave`; `onTranscriptData`; `setTranscriptParams` for explicit source language; `onParticipantEvent` for the attendee roster; `onActiveSpeakerEvent`; `onJoinConfirm`; `onLeave`; `onMediaConnectionInterrupted` for coverage gaps; `setProxy` for inspected egress |
-| **[Zoom Apps](https://developers.zoom.us/docs/zoom-apps/)** (Surface App)                                      | In-meeting panel via the Zoom Apps SDK; `getMeetingUUID`, `getUserContext`, `getRunningContext`; in-client OAuth                                                                                                                                                                                                              |
-| **[Webhooks](https://developers.zoom.us/docs/api/webhooks/)**                                                  | `meeting.rtms_started`, `meeting.rtms_stopped`, `endpoint.url_validation`; HMAC-SHA256 signature verification with a replay window                                                                                                                                                                                            |
+| Product                                                                                                        | Features demonstrated                                                                                                                                                                                                                                                              |
+| -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[RTMS](https://developers.zoom.us/docs/rtms/)** via [`@zoom/rtms`](https://www.npmjs.com/package/@zoom/rtms) | `Client.join`/`leave`; `onTranscriptData`; `setTranscriptParams` for explicit source language; `onParticipantEvent` for the attendee roster; `onActiveSpeakerEvent`; `onJoinConfirm`; `onLeave`; `onMediaConnectionInterrupted` for coverage gaps; `setProxy` for inspected egress |
+| **[Zoom Apps](https://developers.zoom.us/docs/zoom-apps/)** (Surface App)                                      | In-meeting panel via the Zoom Apps SDK; `getMeetingUUID`, `getUserContext`, `getRunningContext`; in-client OAuth                                                                                                                                                                   |
+| **[Webhooks](https://developers.zoom.us/docs/api/webhooks/)**                                                  | `meeting.rtms_started`, `meeting.rtms_stopped`, `endpoint.url_validation`; HMAC-SHA256 signature verification with a replay window                                                                                                                                                 |
 
 Explicitly not used: Meeting SDK, Video SDK, Team Chat, Phone, Contact Center, Zoom REST meeting APIs beyond metadata.
 
@@ -76,7 +76,7 @@ rtms-compliance-sample-js/
 │   ├── server.js              Express app, middleware, route mounting
 │   ├── config.js              env parsing, fail-fast validation
 │   ├── rtms/
-│   │   ├── webhook.js         createWebhookHandler + signature verification
+│   │   ├── webhook.js         raw-body signature verification + routing
 │   │   ├── session.js         stream Map, client lifecycle, callback wiring
 │   │   └── segments.js        Buffer decode, normalize, seqNo assignment
 │   ├── compliance/
@@ -145,7 +145,9 @@ rtms-compliance-sample-js/
 - The README states plainly that `.env` storage is not production-ready and recommends AWS Secrets Manager, HashiCorp Vault, or the platform equivalent.
 - No credential is sent to the client bundle. The Surface App receives only a short-lived JWT scoped to one `meetingId`.
 - No credential appears in logs. `ZM_RTMS_LOG_LEVEL=debug` is documented as safe for the SDK's own logs, and the app's logger redacts any key whose name matches `secret|token|key|password`.
-- Zoom OAuth tokens are stored **in the database, encrypted at rest** with `TOKEN_ENCRYPTION_KEY`, because the audit trail needs to attribute dismissals to a representative across reconnects. In-memory storage was rejected: a restart mid-meeting would break attribution.
+- **No Zoom OAuth token is ever obtained or stored.** This was revised after implementation: the app makes no server-side Zoom API calls. Panel identity comes from the Zoom Apps SDK in-client, and the attendee roster comes from the RTMS `onParticipantEvent` callback rather than a REST call. An earlier draft of this spec required `SESSION_SECRET` and `TOKEN_ENCRYPTION_KEY`; nothing read either, so both were removed. Requiring a secret no code consumes trains developers to generate values that do not matter, which devalues the one that does.
+- **Exactly one signing secret, `JWT_SECRET`.** It signs the short-lived, meeting-scoped tokens the panel presents to the WebSocket and the audit API. It is the boundary that stops one meeting's panel from subscribing to another meeting's alerts.
+- **Secrets this process both issues and verifies are generated outside production.** A missing `JWT_SECRET` is filled with 32 random bytes, and boot prints a warning naming what was generated. Credentials Zoom issues are never invented: a fabricated client secret trades a clear startup failure for a confusing 401 later. `NODE_ENV=production` generates nothing and defaults nothing.
 - The webhook secret token (`ZM_RTMS_WEBHOOK_SECRET`) is used only for signature verification and never leaves the server.
 
 ---
@@ -247,10 +249,21 @@ Required. Compliance tooling has an obvious federal and public-sector audience.
 
 49. Startup with any required environment variable missing exits non-zero and names every missing variable.
 50. No string `zoom.us` exists in the source tree outside `src/config.js`.
-51. `docker build` succeeds and the resulting image starts and serves `GET /health`.
-52. The Docker image uses a glibc base; the `@zoom/rtms` native addon loads successfully inside it.
-53. `package.json` declares `"engines": { "node": ">=22.0.0" }` and `.nvmrc` pins 24.
-54. Startup on Node 21 or lower exits with a readable version error before importing `@zoom/rtms`.
+
+### Developer setup ergonomics
+
+55. Outside production, a missing `JWT_SECRET` is generated as 64 hex characters and reported on `config.generatedSecrets`.
+56. A supplied `JWT_SECRET` is never overwritten, and `config.generatedSecrets` is empty.
+57. Two consecutive loads with no `JWT_SECRET` produce different secrets.
+58. In production, a missing `JWT_SECRET`, `DATABASE_URL`, or `PUBLIC_URL` exits non-zero. Nothing is generated and nothing is defaulted.
+59. Only `JWT_SECRET` appears in `GENERATED_IN_DEV`. No Zoom-issued credential is ever generated, and a missing one fails in development exactly as it does in production.
+60. `RULE_PACK_ID` has no default in any environment. `LLM_API_KEY` is optional in every environment, and the LLM client omits the authorization header entirely when it is absent.
+61. `npm run env:init` writes a `.env` from `.env.example` with generated secrets substituted, at mode 0600, and refuses to overwrite an existing `.env` without `--force`. `npm run env:secrets` prints values and writes nothing.
+62. In development, `DATABASE_URL` defaults to the compose Postgres and `PUBLIC_URL` defaults to `http://localhost:$PORT`. A supplied value always wins.
+63. `docker build` succeeds and the resulting image starts and serves `GET /health`.
+64. The Docker image uses a glibc base; the `@zoom/rtms` native addon loads successfully inside it.
+65. `package.json` declares `"engines": { "node": ">=22.0.0" }` and `.nvmrc` pins 24.
+66. Startup on Node 21 or lower exits with a readable version error before importing `@zoom/rtms`.
 
 ---
 
@@ -299,16 +312,16 @@ Node's built-in `node:test` runner. No extra framework, since the SDK already re
 
 ### Unit
 
-| Module                      | Focus                                                                                                                                               |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `rtms/webhook.js`           | Signature valid, invalid, missing, stale timestamp, length mismatch, url_validation bypass. Criteria 1-6.                                           |
-| `rtms/segments.js`          | Buffer decode, timestamp passthrough, seqNo monotonicity, missing metadata defaults. Criteria 14-17.                                                |
-| `compliance/packs.js`       | Valid load, bad YAML, missing `id`, rule missing `severity`, compile-once assertion. Criteria 19-20.                                                |
-| `compliance/screen.js`      | Single match, multi match, no match, suppression window boundary at 60s and 61s, case and whitespace normalization, latency budget. Criteria 21-24. |
-| `compliance/adjudicate.js`  | Fenced JSON, malformed JSON, timeout, guidance present in prompt, modelId recorded. Criteria 25-30.                                                 |
-| `compliance/disclosures.js` | Satisfaction by representative, non-satisfaction by client, no reverse transition, quote captured. Criteria 32-34.                                  |
-| `compliance/audit.js`       | Genesis prevHash, chain linkage, tamper detection, deletion detection, key-order independence, append-only corrections. Criteria 35-41.             |
-| `config.js`                 | Missing var enumeration, ZOOM_HOST derivation for commercial and gov. Criteria 49-50.                                                               |
+| Module                      | Focus                                                                                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rtms/webhook.js`           | Signature valid, invalid, missing, stale timestamp, length mismatch, url_validation bypass. Criteria 1-6.                                               |
+| `rtms/segments.js`          | Buffer decode, timestamp passthrough, seqNo monotonicity, missing metadata defaults. Criteria 14-17.                                                    |
+| `compliance/packs.js`       | Valid load, bad YAML, missing `id`, rule missing `severity`, compile-once assertion. Criteria 19-20.                                                    |
+| `compliance/screen.js`      | Single match, multi match, no match, suppression window boundary at 60s and 61s, case and whitespace normalization, latency budget. Criteria 21-24.     |
+| `compliance/adjudicate.js`  | Fenced JSON, malformed JSON, timeout, guidance present in prompt, modelId recorded. Criteria 25-30.                                                     |
+| `compliance/disclosures.js` | Satisfaction by representative, non-satisfaction by client, no reverse transition, quote captured. Criteria 32-34.                                      |
+| `compliance/audit.js`       | Genesis prevHash, chain linkage, tamper detection, deletion detection, key-order independence, append-only corrections. Criteria 35-41.                 |
+| `config.js`                 | Missing var enumeration, ZOOM_HOST derivation for commercial and gov, dev secret generation and defaults, production strictness. Criteria 49-50, 55-62. |
 
 ### Integration
 

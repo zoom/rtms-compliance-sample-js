@@ -45,10 +45,40 @@ The practical benefit is cost: clean segments never reach the LLM, so spend trac
 ```bash
 git clone https://github.com/zoom/rtms-compliance-sample-js.git
 cd rtms-compliance-sample-js
-nvm use                # reads .nvmrc, pins Node 24
+nvm use              # reads .nvmrc, pins Node 24
 npm install
-cp .env.example .env   # fill in your values
+npm run env:init     # writes .env with secrets generated
 ```
+
+Then fill in the four values only Zoom can give you: `ZM_RTMS_CLIENT`, `ZM_RTMS_SECRET`, `ZM_RTMS_WEBHOOK_SECRET`, and your `PUBLIC_URL`.
+
+### What you do and do not have to configure
+
+Outside production the app generates what only it cares about and defaults the local URLs, so the shortest working environment is four variables:
+
+| Variable                           | Why it cannot be generated                                                                                 |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ZM_RTMS_CLIENT`, `ZM_RTMS_SECRET` | Issued by Zoom. A fabricated value trades a clear startup failure for a confusing 401 later.               |
+| `ZM_RTMS_WEBHOOK_SECRET`           | Zoom signs webhooks with it. Both sides must agree.                                                        |
+| `RULE_PACK_ID`                     | Which rules are in force is a compliance decision. This one has no default in any environment, on purpose. |
+
+Everything else has a development answer:
+
+| Variable       | Development behavior                                                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`   | Generated per boot, with a warning. Required in production.                                                                            |
+| `DATABASE_URL` | Defaults to the compose Postgres. Required in production.                                                                              |
+| `PUBLIC_URL`   | Defaults to `http://localhost:$PORT`. Required in production.                                                                          |
+| `LLM_API_KEY`  | Optional everywhere. OpenRouter serves free models without one, and a failed adjudication still emits the alert, marked unadjudicated. |
+
+`NODE_ENV=production` generates nothing and defaults nothing. It fails at boot with every missing variable named at once.
+
+```bash
+npm run env:secrets   # print generated secrets, write nothing
+npm run env:init      # write .env at mode 0600; refuses to clobber an existing one
+```
+
+**What `JWT_SECRET` actually protects.** The panel gets `meetingUUID` and user context from the Zoom Apps SDK, posts them to `/api/panel/token`, and the server returns a short-lived token scoped to that one meeting. That signature is the only thing stopping one meeting's panel from subscribing to another meeting's compliance alerts. An ephemeral value is fine locally: after a restart the panel simply requests a new token.
 
 <details>
 <summary><strong>Full local setup</strong></summary>
@@ -63,15 +93,13 @@ cp .env.example .env   # fill in your values
 
    - OAuth Redirect URL: `https://YOUR-NGROK-URL/api/auth/callback`
    - Scopes: `zoomapp:inmeeting`, `meeting:read:meeting`, optionally `user:read`
+
+   The redirect URL is required by the Marketplace form, but this sample never completes a token exchange and implements no `/api/auth/callback` route. It makes no server-side Zoom API calls: panel identity comes from the Zoom Apps SDK in-client, and the attendee roster comes from the RTMS `onParticipantEvent` callback. `meeting:read:meeting` and `user:read` are therefore declared but unused today; they are the scopes you would need the moment you add a REST call.
    - **Features** > **Zoom App SDK** > enable **Real-Time Media Streams** > select **Transcripts**
    - Surface: Home URL `https://YOUR-NGROK-URL`
    - Event Subscriptions: endpoint `https://YOUR-NGROK-URL/api/rtms/webhook`, events `meeting.rtms_started` and `meeting.rtms_stopped`
 
-3. **Fill `.env`.** Generate each secret with:
-
-   ```bash
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-   ```
+3. **Fill `.env`** with the Client ID, Client Secret, Webhook Secret Token, and your ngrok URL. `npm run env:init` already generated `JWT_SECRET`; nothing else needs generating.
 
 4. **Start everything:**
 

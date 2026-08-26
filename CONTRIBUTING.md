@@ -19,10 +19,14 @@ This repo is a reference implementation for the [Real-Time Compliance Advisor bl
 ```bash
 git clone https://github.com/zoom/rtms-compliance-sample-js.git
 cd rtms-compliance-sample-js
-nvm use          # reads .nvmrc
+nvm use            # reads .nvmrc
 npm install
-cp .env.example .env   # then fill in your values
+npm run env:init   # writes .env with JWT_SECRET generated
 ```
+
+Then add the four values Zoom issues. Outside production the app generates its own signing secret and defaults the local URLs, so `ZM_RTMS_CLIENT`, `ZM_RTMS_SECRET`, `ZM_RTMS_WEBHOOK_SECRET`, and `RULE_PACK_ID` are the only hard requirements to boot.
+
+If you add a new secret, put it in `GENERATED_IN_DEV` in `src/config.js` **only** if this process both issues and verifies it. Never generate something Zoom issues, and never generate a key used to encrypt data at rest: an ephemeral key silently makes yesterday's rows undecryptable, which is a worse failure than refusing to start.
 
 ## Tests
 

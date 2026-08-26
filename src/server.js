@@ -62,6 +62,17 @@ try {
   throw err;
 }
 
+if (config.generatedSecrets.length > 0) {
+  // Loud on purpose. These are regenerated on every boot, so any token issued
+  // before a restart stops verifying. Fine locally, wrong anywhere else.
+  console.warn(
+    `\n  Generated ephemeral ${config.generatedSecrets.join(', ')} for this run.\n` +
+      `  Panel tokens will not survive a restart. Set a real value before deploying;\n` +
+      `  NODE_ENV=production refuses to start without one. Run "npm run env:init"\n` +
+      `  to write persistent values into .env.\n`,
+  );
+}
+
 // ─── 3. Rule packs ──────────────────────────────────────────────────────────
 // Fail closed. Starting with a partially loaded pack would produce an audit
 // log that claims coverage the app never had.

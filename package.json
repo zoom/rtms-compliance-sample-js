@@ -10,6 +10,8 @@
   "scripts": {
     "start": "node --env-file=.env src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
+    "env:init": "node scripts/init-env.js",
+    "env:secrets": "node scripts/init-env.js --print",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",

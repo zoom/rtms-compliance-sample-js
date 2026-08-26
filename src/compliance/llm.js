@@ -10,12 +10,15 @@
 
 export function createLlmClient({ baseUrl, apiKey, model, fetchImpl = globalThis.fetch }) {
   return async function complete(prompt) {
+    // Omit the header entirely when there is no key. OpenRouter serves free
+    // models unauthenticated, and sending "Bearer undefined" would turn that
+    // into a 401 that looks like a broken key rather than an absent one.
+    const headers = { 'content-type': 'application/json' };
+    if (apiKey) headers.authorization = `Bearer ${apiKey}`;
+
     const response = await fetchImpl(`${baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content: prompt }],
