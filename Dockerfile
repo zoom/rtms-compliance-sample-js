@@ -1,15 +1,23 @@
 # Platform-agnostic image for rtms-compliance-sample-js.
 #
-# IMPORTANT: this must stay on a glibc base. @zoom/rtms ships a glibc-linked
-# native addon (N-API 9/10) with prebuilds for linux-x64 and darwin-arm64.
-# Alpine's musl libc cannot load it, and the failure mode is a segfault at
-# import rather than a readable error. A test asserts no Alpine base here.
+# IMPORTANT: the base image has two hard constraints, both from the @zoom/rtms
+# native addon (N-API 9/10, prebuilt for linux-x64 and darwin-arm64).
+#
+#   1. glibc, not musl. Alpine cannot load the addon at all.
+#   2. libstdc++ providing GLIBCXX_3.4.31 or newer. Debian bookworm ships
+#      gcc-12 and stops at GLIBCXX_3.4.30, so the container builds fine and
+#      then dies at import with:
+#        version `GLIBCXX_3.4.31' not found (required by .../rtms.node)
+#      Trixie ships gcc-14 (GLIBCXX_3.4.33) and works.
+#
+# Verify with a real container boot before changing this line. Both failures
+# happen at runtime, not at build time.
 #
 # Build:  docker build -t rtms-compliance-sample .
 # Run:    docker run --env-file .env -p 3000:3000 rtms-compliance-sample
 
 # ─── Stage 1: build the Surface App and install production dependencies ─────
-FROM node:24-bookworm-slim AS builder
+FROM node:24-trixie-slim AS builder
 
 WORKDIR /app
 
@@ -40,7 +48,7 @@ RUN npx prisma generate
 RUN npm prune --omit=dev
 
 # ─── Stage 2: runtime ───────────────────────────────────────────────────────
-FROM node:24-bookworm-slim AS runtime
+FROM node:24-trixie-slim AS runtime
 
 # Run as a non-root user. The image needs no write access outside /tmp.
 RUN groupadd --system --gid 1001 app \

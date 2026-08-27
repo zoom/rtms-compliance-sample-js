@@ -120,7 +120,7 @@ npm run env:init      # write .env at mode 0600; refuses to clobber an existing 
 | [Deploy to Render](https://render.com/deploy?repo=https://github.com/zoom/rtms-compliance-sample-js) | Backend, frontend, database |
 | [Deploy to Railway](https://railway.app/new?repo=https://github.com/zoom/rtms-compliance-sample-js)  | Backend, frontend, database |
 
-**Deploy anywhere:** the [Dockerfile](Dockerfile) is platform-agnostic. It must stay on a glibc base; Alpine's musl libc cannot load the RTMS native addon.
+**Deploy anywhere:** the [Dockerfile](Dockerfile) is platform-agnostic, but the base image has two hard constraints from the RTMS native addon. It needs glibc, so Alpine is out, and it needs libstdc++ with `GLIBCXX_3.4.31` or newer, so Debian bookworm is out too. The image uses `node:24-trixie-slim`. Both failures happen at container start rather than at build time, so verify with a real boot before changing that line.
 
 ---
 

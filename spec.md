@@ -108,7 +108,7 @@ rtms-compliance-sample-js/
 ├── .github/
 │   ├── workflows/ci.yml
 │   └── dependabot.yml
-├── Dockerfile                 debian-bookworm-slim, multi-stage
+├── Dockerfile                 node:24-trixie-slim, multi-stage
 ├── compose.yaml               app + postgres
 ├── manifest.json              Zoom App manifest (mirrors the blueprint)
 ├── .env.example
@@ -263,7 +263,7 @@ Required. Compliance tooling has an obvious federal and public-sector audience.
 61. `npm run env:init` writes a `.env` from `.env.example` with generated secrets substituted, at mode 0600, and refuses to overwrite an existing `.env` without `--force`. `npm run env:secrets` prints values and writes nothing.
 62. In development, `DATABASE_URL` defaults to the compose Postgres and `PUBLIC_URL` defaults to `http://localhost:$PORT`. A supplied value always wins.
 63. `docker build` succeeds and the resulting image starts and serves `GET /health`.
-64. The Docker image uses a glibc base; the `@zoom/rtms` native addon loads successfully inside it.
+64. The Docker image uses a glibc base whose libstdc++ provides `GLIBCXX_3.4.31` or newer, and the `@zoom/rtms` native addon loads inside a booted container. Debian bookworm satisfies the glibc half and fails the second, so this must be verified by starting the container, not by inspecting the base image name.
 65. `package.json` declares `"engines": { "node": ">=22.0.0" }` and `.nvmrc` pins 24.
 66. Startup on Node 21 or lower exits with a readable version error before importing `@zoom/rtms`.
 

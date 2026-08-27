@@ -1,0 +1,9 @@
+node_modules
+web/dist
+src/db/generated
+coverage
+package-lock.json
+
+# Deliberately invalid YAML. These fixtures exist to prove the rule pack
+# loader fails closed, so prettier must not try to parse or rewrite them.
+tests/fixtures/

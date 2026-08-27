@@ -17,75 +17,75 @@ prohibited:
   - id: guaranteed-return
     severity: high
     match:
-      - "guaranteed returns?"
-      - "risk[- ]free"
-      - "can.t lose"
-      - "no way to lose"
-    guidance: "Past performance does not guarantee future results. Restate as a historical range."
+      - 'guaranteed returns?'
+      - 'risk[- ]free'
+      - 'can.t lose'
+      - 'no way to lose'
+    guidance: 'Past performance does not guarantee future results. Restate as a historical range.'
 
   - id: unapproved-projection
     severity: medium
     match:
-      - "you.ll definitely"
-      - "we always beat"
-      - "locked[- ]in gains?"
-      - "will double your"
-    guidance: "Replace the projection with approved illustration language."
+      - 'you.ll definitely'
+      - 'we always beat'
+      - 'locked[- ]in gains?'
+      - 'will double your'
+    guidance: 'Replace the projection with approved illustration language.'
 
   - id: pressure-tactic
     severity: medium
     match:
-      - "only good until today"
-      - "you have to decide (right )?now"
-      - "this offer expires"
+      - 'only good until today'
+      - 'you have to decide (right )?now'
+      - 'this offer expires'
     guidance: "Remove urgency framing. Restate the actual deadline, if any, and the client's right to consider."
 
   - id: unlicensed-tax-advice
     severity: high
     match:
-      - "this is tax[- ]free"
-      - "you won.t owe (any )?tax"
-      - "write (it|this) off"
-    guidance: "Refer tax questions to a qualified tax advisor. Do not characterize tax treatment."
+      - 'this is tax[- ]free'
+      - 'you won.t owe (any )?tax'
+      - 'write (it|this) off'
+    guidance: 'Refer tax questions to a qualified tax advisor. Do not characterize tax treatment.'
 
   - id: undisclosed-third-party
     severity: low
     match:
-      - "off the record"
-      - "between you and me"
-    guidance: "All statements in a client meeting are on the record. Restate for the transcript."
+      - 'off the record'
+      - 'between you and me'
+    guidance: 'All statements in a client meeting are on the record. Restate for the transcript.'
 
 required_disclosures:
   - id: recording-consent
     severity: high
     satisfied_by:
-      - "this (meeting|call) is being recorded"
-      - "consent to record"
-      - "do you mind if (we|i) record"
-    prompt: "Confirm verbal consent to record before continuing."
+      - 'this (meeting|call) is being recorded'
+      - 'consent to record'
+      - 'do you mind if (we|i) record'
+    prompt: 'Confirm verbal consent to record before continuing.'
 
   - id: fees-and-conflicts
     severity: high
     satisfied_by:
-      - "advisory fee"
-      - "conflict of interest"
-      - "how we are compensated"
-      - "our fee schedule"
-    prompt: "State the advisory fee schedule and any conflicts of interest."
+      - 'advisory fee'
+      - 'conflict of interest'
+      - 'how we are compensated'
+      - 'our fee schedule'
+    prompt: 'State the advisory fee schedule and any conflicts of interest.'
 
   - id: risk-disclosure
     severity: high
     satisfied_by:
-      - "you (could|can) lose"
-      - "past performance"
-      - "not fdic insured"
-      - "investments? (involve|carry) risk"
-    prompt: "State that investments carry risk and past performance is not indicative of future results."
+      - 'you (could|can) lose'
+      - 'past performance'
+      - 'not fdic insured'
+      - 'investments? (involve|carry) risk'
+    prompt: 'State that investments carry risk and past performance is not indicative of future results.'
 
   - id: suitability-check
     severity: medium
     satisfied_by:
-      - "time horizon"
-      - "risk tolerance"
-      - "investment objective"
+      - 'time horizon'
+      - 'risk tolerance'
+      - 'investment objective'
     prompt: "Confirm the client's time horizon, risk tolerance, and objectives on the record."

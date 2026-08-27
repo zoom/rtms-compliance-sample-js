@@ -14,62 +14,62 @@ prohibited:
   - id: diagnosis-without-exam
     severity: high
     match:
-      - "you definitely have"
-      - "i can diagnose (you|this) (right )?now"
-      - "no need (for|to do) (an )?exam"
-    guidance: "Do not state a diagnosis before an appropriate examination. Describe next steps instead."
+      - 'you definitely have'
+      - 'i can diagnose (you|this) (right )?now'
+      - 'no need (for|to do) (an )?exam'
+    guidance: 'Do not state a diagnosis before an appropriate examination. Describe next steps instead.'
 
   - id: guaranteed-outcome
     severity: high
     match:
-      - "guaranteed (cure|recovery|results?)"
-      - "this will definitely (cure|fix)"
-      - "100% effective"
-    guidance: "Describe expected ranges and known risks. Do not guarantee clinical outcomes."
+      - 'guaranteed (cure|recovery|results?)'
+      - 'this will definitely (cure|fix)'
+      - '100% effective'
+    guidance: 'Describe expected ranges and known risks. Do not guarantee clinical outcomes.'
 
   - id: third-party-phi
     severity: high
     match:
-      - "another patient"
-      - "someone else with the same"
-    guidance: "Do not reference other patients. Even unnamed details can identify someone."
+      - 'another patient'
+      - 'someone else with the same'
+    guidance: 'Do not reference other patients. Even unnamed details can identify someone.'
 
   - id: unsecured-channel
     severity: medium
     match:
-      - "(text|sms) me your"
-      - "email me your (chart|records|results)"
-      - "send it to my personal"
-    guidance: "Direct the patient to the secure portal. Do not accept records over unsecured channels."
+      - '(text|sms) me your'
+      - 'email me your (chart|records|results)'
+      - 'send it to my personal'
+    guidance: 'Direct the patient to the secure portal. Do not accept records over unsecured channels.'
 
 required_disclosures:
   - id: identity-verification
     severity: high
     satisfied_by:
-      - "confirm your date of birth"
-      - "verify your identity"
-      - "state your full name"
-    prompt: "Verify patient identity before discussing any clinical detail."
+      - 'confirm your date of birth'
+      - 'verify your identity'
+      - 'state your full name'
+    prompt: 'Verify patient identity before discussing any clinical detail.'
 
   - id: consent-to-treat
     severity: high
     satisfied_by:
-      - "consent to treatment"
-      - "do you agree to proceed"
-      - "authorize (me|us) to treat"
-    prompt: "Obtain and record verbal consent to treat."
+      - 'consent to treatment'
+      - 'do you agree to proceed'
+      - 'authorize (me|us) to treat'
+    prompt: 'Obtain and record verbal consent to treat.'
 
   - id: recording-consent
     severity: high
     satisfied_by:
-      - "this (visit|meeting|call) is being recorded"
-      - "consent to record"
-    prompt: "Confirm verbal consent to record before continuing."
+      - 'this (visit|meeting|call) is being recorded'
+      - 'consent to record'
+    prompt: 'Confirm verbal consent to record before continuing.'
 
   - id: emergency-guidance
     severity: medium
     satisfied_by:
-      - "call 911"
-      - "nearest emergency room"
-      - "if this becomes an emergency"
-    prompt: "State what the patient should do if symptoms escalate between visits."
+      - 'call 911'
+      - 'nearest emergency room'
+      - 'if this becomes an emergency'
+    prompt: 'State what the patient should do if symptoms escalate between visits.'
