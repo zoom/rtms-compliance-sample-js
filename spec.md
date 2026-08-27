@@ -40,21 +40,23 @@ Explicitly not used: Meeting SDK, Video SDK, Team Chat, Phone, Contact Center, Z
 
 **General App with a Zoom App (Surface) surface plus user-level OAuth.**
 
-Justification: the panel runs inside the Zoom client, which requires the Zoom App type and the `zoomapp:inmeeting` scope. The app also needs to know _which_ participant is the assigned representative, because alert visibility is scoped to that person; leaking a compliance alert to the client on the call is itself a problem. That identity comes from user-level OAuth via in-client OAuth, not from an account-level token.
+Justification: the panel runs inside the Zoom client, which requires the Zoom App type and the `zoomapp:inmeeting` scope. The app also needs to know _which_ participant is the assigned representative, because alert visibility is scoped to that person; leaking a compliance alert to the client on the call is itself a problem. That identity comes from the Zoom Apps SDK's `getUserContext()` in-client, which is why no REST scope is needed to obtain it.
 
-Server-to-Server OAuth was considered and rejected. It would give account-level access with no per-user identity, so the app could not scope alert delivery, and the audit record would not attribute the dismissal of an alert to a specific representative.
+Server-to-Server OAuth was considered and rejected. It authorizes at the account level with no per-user identity, so the app could not scope alert delivery, and the audit record could not attribute the dismissal of an alert to a specific representative.
 
 The RTMS SDK authenticates with the same app's OAuth Client ID and Secret, supplied as `ZM_RTMS_CLIENT` and `ZM_RTMS_SECRET`.
 
 ### Required Scopes
 
-| Scope                  | Optional | Why it's needed                                                                                                                                        |
-| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `zoomapp:inmeeting`    | No       | Render the advisor panel inside a meeting. Without it there is no Surface App.                                                                         |
-| `meeting:read:meeting` | No       | Meeting topic, scheduled start, and host for the audit record header.                                                                                  |
-| `user:read`            | Yes      | Resolve the assigned representative's name and ID for alert scoping and dismissal attribution. Degrades to "representative" as a label if not granted. |
+| Scope               | Optional | Why it's needed                                                                |
+| ------------------- | -------- | ------------------------------------------------------------------------------ |
+| `zoomapp:inmeeting` | No       | Render the advisor panel inside a meeting. Without it there is no Surface App. |
 
-No participant scope is requested. The attendee roster on the audit record comes from the SDK's `onParticipantEvent` callback, which is delivered over the media stream the app is already entitled to.
+**Exactly one scope.** Revised after implementation: an earlier draft also requested `meeting:read:meeting` and `user:read`, and neither was ever exercised. The app makes no server-side Zoom REST calls. Transcripts arrive over RTMS, the attendee roster arrives through `onParticipantEvent`, per-segment speaker identity arrives in the transcript callback's `metadata`, and panel identity comes from the Zoom Apps SDK in-client. Nothing is left for a REST scope to do.
+
+The `zoom_app_apis` list was trimmed on the same principle: `getMeetingParticipants` was declared but contradicted the documented design, and `showNotification` and `onRunningContextChange` were never called.
+
+A compliance application that over-requests permissions is a poor advertisement for itself, so the standing rule here is to add a scope in the same change that adds the call needing it.
 
 ### Webhook Events
 

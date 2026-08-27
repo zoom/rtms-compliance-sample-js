@@ -92,9 +92,9 @@ npm run env:init      # write .env at mode 0600; refuses to clobber an existing 
 2. **Create a Zoom App** at [marketplace.zoom.us](https://marketplace.zoom.us/): **Develop** > **Build App** > **General App**. Or upload [`manifest.json`](manifest.json) to skip the manual configuration.
 
    - OAuth Redirect URL: `https://YOUR-NGROK-URL/api/auth/callback`
-   - Scopes: `zoomapp:inmeeting`, `meeting:read:meeting`, optionally `user:read`
+   - Scopes: `zoomapp:inmeeting` only
 
-   The redirect URL is required by the Marketplace form, but this sample never completes a token exchange and implements no `/api/auth/callback` route. It makes no server-side Zoom API calls: panel identity comes from the Zoom Apps SDK in-client, and the attendee roster comes from the RTMS `onParticipantEvent` callback. `meeting:read:meeting` and `user:read` are therefore declared but unused today; they are the scopes you would need the moment you add a REST call.
+   The redirect URL is required by the Marketplace form, but this sample never completes a token exchange and implements no `/api/auth/callback` route. It makes no server-side Zoom API calls at all: panel identity comes from the Zoom Apps SDK in-client, transcripts come over RTMS, and the attendee roster comes from the RTMS `onParticipantEvent` callback. So it requests exactly one scope. Add `meeting:read:meeting` or `user:read` when you add the REST call that needs them, not before.
    - **Features** > **Zoom App SDK** > enable **Real-Time Media Streams** > select **Transcripts**
    - Surface: Home URL `https://YOUR-NGROK-URL`
    - Event Subscriptions: endpoint `https://YOUR-NGROK-URL/api/rtms/webhook`, events `meeting.rtms_started` and `meeting.rtms_stopped`
