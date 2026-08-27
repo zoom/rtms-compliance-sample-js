@@ -114,7 +114,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      # The gitleaks *action* requires a paid licence for organization repos.
+      # The gitleaks CLI is MIT and has no such restriction, so run the
+      # container directly.
       - name: Scan for committed credentials
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source=/repo --redact --verbose --no-banner

@@ -8,11 +8,12 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "prestart": "prisma generate",
     "start": "node --env-file=.env src/server.js",
+    "predev": "prisma generate",
     "dev": "node --env-file=.env --watch src/server.js",
     "env:init": "node scripts/init-env.js",
     "env:secrets": "node scripts/init-env.js --print",
-    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "test": "node --test --test-reporter=spec \"tests/**/*.test.js\"",

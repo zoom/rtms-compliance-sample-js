@@ -17,10 +17,10 @@ WORKDIR /app
 # changes only. Dev dependencies are needed here for the Prisma CLI and the
 # Vite build; they are pruned before the runtime stage copies node_modules.
 #
-# The schema must be present before npm ci, because postinstall runs
-# `prisma generate`.
+# `prisma generate` is an explicit step further down, not a postinstall hook.
+# Running it from postinstall races @prisma/client's own install and fails
+# nondeterministically on clean CI runners.
 COPY package.json package-lock.json ./
-COPY prisma ./prisma
 RUN npm ci
 
 # Frontend build.
@@ -32,6 +32,7 @@ RUN npm --prefix web run build
 
 # Generate the Prisma client into src/db/generated. It is gitignored, so it
 # must be produced here rather than copied from the build context.
+COPY prisma ./prisma
 COPY src ./src
 RUN npx prisma generate
 
