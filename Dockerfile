@@ -17,7 +17,7 @@
 # Run:    docker run --env-file .env -p 3000:3000 rtms-compliance-sample
 
 # ─── Stage 1: build the Surface App and install production dependencies ─────
-FROM node:24-trixie-slim AS builder
+FROM node:26-trixie-slim AS builder
 
 WORKDIR /app
 
@@ -48,7 +48,7 @@ RUN npx prisma generate
 RUN npm prune --omit=dev
 
 # ─── Stage 2: runtime ───────────────────────────────────────────────────────
-FROM node:24-trixie-slim AS runtime
+FROM node:26-trixie-slim AS runtime
 
 # Run as a non-root user. The image needs no write access outside /tmp.
 RUN groupadd --system --gid 1001 app \
