@@ -48,9 +48,9 @@ export function createDisclosureTracker(pack, { representativeUserId } = {}) {
     /**
      * Evaluate transcript segments against the pending disclosures.
      *
-     * Called on an interval rather than per segment: this walks every pending
-     * disclosure against every supplied segment, and the panel does not need
-     * sub-second precision on a checklist.
+     * The pipeline calls this with each new segment as it arrives. Satisfied
+     * disclosures are skipped, so the cost per segment shrinks as the
+     * checklist fills.
      *
      * @param {Array<object>} segments
      * @returns {Array<object>} only the disclosures that transitioned

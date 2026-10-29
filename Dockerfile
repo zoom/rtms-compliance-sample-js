@@ -9,15 +9,19 @@
 #      then dies at import with:
 #        version `GLIBCXX_3.4.31' not found (required by .../rtms.node)
 #      Trixie ships gcc-14 (GLIBCXX_3.4.33) and works.
+#   3. linux/amd64 only. There is no linux-arm64 prebuild, and on arm64 the
+#      addon's install script warns and exits 0, leaving build/Release empty.
+#      The image then dies at import with ERR_MODULE_NOT_FOUND. Both stages
+#      are pinned so Apple Silicon hosts build x64 under emulation.
 #
-# Verify with a real container boot before changing this line. Both failures
-# happen at runtime, not at build time.
+# Verify with a real container boot before changing these lines. All three
+# failures happen at runtime, not at build time.
 #
 # Build:  docker build -t rtms-compliance-sample .
 # Run:    docker run --env-file .env -p 3000:3000 rtms-compliance-sample
 
 # ─── Stage 1: build the Surface App and install production dependencies ─────
-FROM node:24-trixie-slim AS builder
+FROM --platform=linux/amd64 node:24-trixie-slim AS builder
 
 WORKDIR /app
 
@@ -48,13 +52,25 @@ RUN npx prisma generate
 RUN npm prune --omit=dev
 
 # ─── Stage 2: runtime ───────────────────────────────────────────────────────
-FROM node:24-trixie-slim AS runtime
+FROM --platform=linux/amd64 node:24-trixie-slim AS runtime
 
-# Run as a non-root user. The image needs no write access outside /tmp.
+# The slim image has no CA bundle. Node carries its own, but the RTMS native
+# addon verifies the media server's TLS against the system bundle, and
+# without one the join fails after the SDK warns "No CA certificate found".
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+# Run as a non-root user.
 RUN groupadd --system --gid 1001 app \
  && useradd --system --uid 1001 --gid app app
 
 WORKDIR /app
+
+# The native SDK writes its own log files to ./logs relative to the working
+# directory. /app is root-owned, so the directory must exist and belong to the
+# app user, or every write fails with "failed to open file [/app/logs/...]".
+RUN mkdir -p /app/logs && chown app:app /app/logs
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/web/dist ./web/dist
@@ -74,6 +90,9 @@ ENV PORT=3000
 # Government; api and marketplace hosts are derived from this single value.
 ENV ZOOM_HOST=https://zoom.us
 
+# Explicit rather than relying on the SDK's search of common locations.
+ENV ZM_RTMS_CA=/etc/ssl/certs/ca-certificates.crt
+
 # Structured SDK logs so they land parseable in a log pipeline.
 ENV ZM_RTMS_LOG_FORMAT=json
 ENV ZM_RTMS_LOG_LEVEL=info
@@ -85,4 +104,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-CMD ["node", "src/server.js"]
+# Apply pending migrations before serving. Idempotent, so every start runs it;
+# without it a fresh database has no tables and every write fails.
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node src/server.js"]

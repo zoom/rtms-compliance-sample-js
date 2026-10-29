@@ -236,3 +236,64 @@ describe('handleWebhook', () => {
     assert.ok(elapsedMs < 50, `expected under 50ms, got ${elapsedMs.toFixed(2)}ms`);
   });
 });
+
+describe('webhook rejection reasons', () => {
+  const started = () => rtmsStartedPayload();
+
+  test('should verify a string body, which is what express.text() hands the SDK handler', () => {
+    const { rawBody, headers } = signedDelivery(started());
+
+    const result = handleWebhook({
+      rawBody: rawBody.toString('utf8'),
+      headers,
+      secret: TEST_SECRET,
+    });
+
+    assert.equal(result.status, 200);
+    assert.equal(result.action.type, 'stream_start');
+  });
+
+  test('should name the sending app when its client id differs from ours', () => {
+    const { rawBody, headers } = signedDelivery(started(), { secret: 'another-apps-secret' });
+
+    const result = handleWebhook({
+      rawBody,
+      headers: { ...headers, clientid: 'OTHER_APP_ID' },
+      secret: TEST_SECRET,
+      clientId: 'OUR_APP_ID',
+    });
+
+    assert.equal(result.status, 401);
+    assert.match(result.reason, /from app OTHER_APP_ID/);
+    assert.match(result.reason, /ZM_RTMS_CLIENT is OUR_APP_ID/);
+  });
+
+  test('should blame the webhook secret when the client id matches', () => {
+    const { rawBody, headers } = signedDelivery(started(), { secret: 'stale-secret' });
+
+    const result = handleWebhook({
+      rawBody,
+      headers: { ...headers, clientid: 'OUR_APP' },
+      secret: TEST_SECRET,
+      clientId: 'OUR_APP',
+    });
+
+    assert.match(result.reason, /ZM_RTMS_WEBHOOK_SECRET does not match/);
+  });
+
+  test('should report a stale timestamp as such', () => {
+    const { rawBody, headers } = signedDelivery(started(), { timestamp: nowSeconds(-600) });
+
+    const result = handleWebhook({ rawBody, headers, secret: TEST_SECRET });
+
+    assert.match(result.reason, /replay window/);
+  });
+
+  test('should keep the reason out of the response body', () => {
+    const { rawBody, headers } = signedDelivery(started(), { secret: 'wrong' });
+
+    const result = handleWebhook({ rawBody, headers, secret: TEST_SECRET });
+
+    assert.deepEqual(result.body, { error: 'Unauthorized' });
+  });
+});

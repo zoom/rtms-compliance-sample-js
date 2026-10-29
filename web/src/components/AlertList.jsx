@@ -30,7 +30,11 @@ export function AlertList({ alerts, onDismiss }) {
             <div className="alert-head">
               <span className="rule-id">{alert.ruleId}</span>
               <span className={`badge badge-${alert.severity}`}>{alert.severity}</span>
-              {!alert.adjudicated && <span className="badge badge-unverified">unverified</span>}
+              {!alert.adjudicated && alert.adjudication !== 'off' && (
+                <span className="badge badge-unverified">
+                  {alert.pending ? 'checking' : 'unverified'}
+                </span>
+              )}
             </div>
 
             <blockquote>&ldquo;{alert.quote}&rdquo;</blockquote>

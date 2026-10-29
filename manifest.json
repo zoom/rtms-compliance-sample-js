@@ -39,6 +39,8 @@
           "getMeetingUUID",
           "getRunningContext",
           "getUserContext",
+          "startRTMS",
+          "onRTMSStatusChange",
           "authorize",
           "onAuthorized",
           "promptAuthorize"

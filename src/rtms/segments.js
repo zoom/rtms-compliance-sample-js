@@ -6,10 +6,20 @@
  *
  * - `buffer` is a Buffer, not a string. Concatenating it directly yields
  *   "[object Object]" for some call sites and mangles multi-byte UTF-8.
- * - `timestamp` is already a Unix timestamp in milliseconds. Older RTMS
- *   examples divide by 1000 to convert from microseconds; doing that here
- *   would put every segment in 1970.
+ * - `timestamp` arrives in Unix microseconds from @zoom/rtms 1.1.0 (observed:
+ *   1793300024893609 for 2026-10-29 18:53:44 UTC). Everything downstream
+ *   works in milliseconds: the suppression window, the model's context
+ *   window, and audit timestamps. Left unconverted, a 60 s window is 60 ms.
  */
+
+/**
+ * Microseconds to milliseconds, tolerating an SDK that already sends ms.
+ * Current Unix time is ~1.8e12 in ms and ~1.8e15 in µs; 1e14 sits between
+ * them for centuries either way.
+ */
+export function toUnixMs(timestamp) {
+  return timestamp > 1e14 ? Math.floor(timestamp / 1000) : timestamp;
+}
 
 /** Applied when the SDK delivers a segment without speaker identity. */
 export const SPEAKER_DEFAULTS = Object.freeze({
@@ -36,7 +46,7 @@ export function createSegmentNormalizer() {
       speakerId: metadata?.userId ?? SPEAKER_DEFAULTS.speakerId,
       speakerLabel: metadata?.userName ?? SPEAKER_DEFAULTS.speakerLabel,
       text,
-      tStartMs: timestamp,
+      tStartMs: toUnixMs(timestamp),
       seqNo: seqNo++,
     };
   };

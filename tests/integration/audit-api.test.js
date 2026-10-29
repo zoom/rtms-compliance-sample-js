@@ -35,7 +35,7 @@ function seed(store, count = 3) {
       id: `rec-${i}`,
       seqNo: i,
       ruleId: 'guaranteed-return',
-      rulePackVersion: 'fin-us-retail-v3',
+      rulePackVersion: 'fin-us-retail-v4',
       severity: 'high',
       quote: 'guaranteed return',
       verdict: 'violation',
@@ -175,7 +175,7 @@ describe('GET /api/meetings/:id/audit', () => {
     assert.equal(record.ruleId, 'guaranteed-return');
     assert.equal(record.verdict, 'violation');
     assert.equal(record.modelId, 'anthropic/claude-sonnet-5');
-    assert.equal(record.rulePackVersion, 'fin-us-retail-v3');
+    assert.equal(record.rulePackVersion, 'fin-us-retail-v4');
   });
 });
 
@@ -194,7 +194,7 @@ describe('append-only enforcement', () => {
       id: 'rec-correction',
       seqNo: 1,
       ruleId: 'guaranteed-return',
-      rulePackVersion: 'fin-us-retail-v3',
+      rulePackVersion: 'fin-us-retail-v4',
       severity: 'high',
       quote: 'guaranteed return',
       verdict: 'not-a-violation',

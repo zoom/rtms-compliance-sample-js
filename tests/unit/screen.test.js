@@ -8,7 +8,7 @@ import { loadPack } from '../../src/compliance/packs.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PACK = path.join(HERE, '..', 'fixtures', 'packs', 'valid-pack.yaml');
-const SHIPPED_PACK = path.join(HERE, '..', '..', 'rule-packs', 'fin-us-retail-v3.yaml');
+const SHIPPED_PACK = path.join(HERE, '..', '..', 'rule-packs', 'fin-us-retail-v4.yaml');
 
 const T0 = 1756200000000;
 const segment = (text, { seqNo = 0, speakerId = 42 } = {}) => ({
@@ -161,5 +161,35 @@ describe('screening latency', () => {
     after.forEach((pattern, i) => {
       assert.equal(pattern, before[i], 'screening must reuse the compiled RegExp instances');
     });
+  });
+});
+
+describe('fin-us-retail-v4 coverage', () => {
+  const V4 = path.join(HERE, '..', '..', 'rule-packs', 'fin-us-retail-v4.yaml');
+  const flagged = (text) =>
+    createScreener(loadPack(V4))
+      .screen(segment(text), T0)
+      .map((c) => c.ruleId);
+
+  test('should flag a guarantee phrased around a figure', () => {
+    assert.deepEqual(flagged('I can guarantee a 1000% return with no risk.'), [
+      'guaranteed-return',
+    ]);
+  });
+
+  test('should flag a request for a social security number', () => {
+    assert.deepEqual(flagged('Please send me your social security number.'), [
+      'sensitive-data-request',
+    ]);
+  });
+
+  test('should not flag compliant risk language', () => {
+    for (const text of [
+      'Investments are not without risk.',
+      'Past performance does not guarantee future results.',
+      'What is your risk tolerance?',
+    ]) {
+      assert.deepEqual(flagged(text), [], text);
+    }
   });
 });

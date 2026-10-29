@@ -10,7 +10,7 @@
  * The fake records every call so tests can assert ordering, which matters:
  * callbacks registered after join() miss early segments.
  */
-export function createFakeRtms() {
+export function createFakeRtms({ joinResult = true, joinError = null } = {}) {
   const clients = [];
 
   class FakeClient {
@@ -71,7 +71,9 @@ export function createFakeRtms() {
       this.joinPayload = payload;
       this._uuid = payload?.meeting_uuid ?? null;
       this._streamId = payload?.rtms_stream_id ?? null;
-      return this.#record('join', [payload]);
+      this.#record('join', [payload]);
+      if (joinError) throw joinError;
+      return joinResult;
     }
 
     leave() {

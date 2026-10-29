@@ -15,7 +15,7 @@ const validEnv = (overrides = {}) => ({
   DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
   PUBLIC_URL: 'https://example.ngrok-free.app',
   JWT_SECRET: 'b'.repeat(64),
-  RULE_PACK_ID: 'fin-us-retail-v3',
+  RULE_PACK_ID: 'fin-us-retail-v4',
   LLM_API_KEY: 'llm-key',
   ...overrides,
 });
@@ -26,7 +26,7 @@ const devEnv = (overrides = {}) => ({
   ZM_RTMS_CLIENT: 'client-id',
   ZM_RTMS_SECRET: 'client-secret',
   ZM_RTMS_WEBHOOK_SECRET: 'webhook-secret',
-  RULE_PACK_ID: 'fin-us-retail-v3',
+  RULE_PACK_ID: 'fin-us-retail-v4',
   ...overrides,
 });
 
@@ -34,7 +34,7 @@ describe('loadConfig', () => {
   test('should load a complete environment without throwing', () => {
     const config = loadConfig(validEnv());
 
-    assert.equal(config.rulePackId, 'fin-us-retail-v3');
+    assert.equal(config.rulePackId, 'fin-us-retail-v4');
   });
 
   test('should throw ConfigError listing every missing required variable', () => {
@@ -239,13 +239,31 @@ describe('Zoom for Government host derivation', () => {
   });
 });
 
+describe('adjudication flag', () => {
+  test('should default to off', () => {
+    assert.equal(loadConfig(validEnv()).adjudicationEnabled, false);
+  });
+
+  test('should turn on only for "true"', () => {
+    const config = loadConfig(validEnv({ ADJUDICATION_ENABLED: 'true', LLM_API_KEY: 'sk-test' }));
+    assert.equal(config.adjudicationEnabled, true);
+  });
+
+  test('should refuse to start when on without a key', () => {
+    assert.throws(
+      () => loadConfig(validEnv({ ADJUDICATION_ENABLED: 'true', LLM_API_KEY: '' })),
+      ConfigError,
+    );
+  });
+
+  test('should reject a value that is not true or false', () => {
+    assert.throws(() => loadConfig(validEnv({ ADJUDICATION_ENABLED: 'yes' })), ConfigError);
+  });
+});
+
 describe('tunable defaults', () => {
   test('should default the suppression window to 60 seconds', () => {
     assert.equal(loadConfig(validEnv()).ruleSuppressionWindowSeconds, 60);
-  });
-
-  test('should default the disclosure interval to 20 seconds', () => {
-    assert.equal(loadConfig(validEnv()).disclosureIntervalSeconds, 20);
   });
 
   test('should default the transcript language to ENGLISH', () => {
@@ -262,7 +280,7 @@ describe('tunable defaults', () => {
 
   test('should reject a non-numeric override rather than falling back silently', () => {
     assert.throws(
-      () => loadConfig(validEnv({ DISCLOSURE_INTERVAL_SECONDS: 'twenty' })),
+      () => loadConfig(validEnv({ RULE_SUPPRESSION_WINDOW_SECONDS: 'sixty' })),
       ConfigError,
     );
   });

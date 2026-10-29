@@ -10,7 +10,7 @@
  */
 import { createScreener } from './screen.js';
 import { createDisclosureTracker } from './disclosures.js';
-import { adjudicate } from './adjudicate.js';
+import { adjudicate, provisionalAlert, ruleOnlyAlert } from './adjudicate.js';
 import { notifySupervisor } from '../api/supervisor.js';
 
 /** How much prior transcript the model sees with each candidate. */
@@ -53,6 +53,24 @@ export function createPipeline({
   async function handleCandidate(candidate, segment) {
     const rule = rulesById.get(candidate.ruleId);
 
+    // Adjudication off: the rule match is the alert. Nothing to wait for and
+    // nothing to label, so the panel shows it without any verdict UI.
+    if (!llm) {
+      const alert = ruleOnlyAlert({ candidate, rule });
+      alerts.push(alert);
+      publishState();
+      hub.broadcastAlert(meetingId, alert);
+      await recordAndEscalate(alert, segment);
+      return;
+    }
+
+    // Alert first, adjudicate second. Waiting on the model would hold every
+    // alert back by up to the LLM timeout.
+    const provisional = provisionalAlert({ candidate, rule, modelId: config.llmModel });
+    alerts.push(provisional);
+    publishState();
+    hub.broadcastAlert(meetingId, provisional);
+
     const alert = await adjudicate({
       candidate,
       rule,
@@ -63,10 +81,15 @@ export function createPipeline({
       logger,
     });
 
-    alerts.push(alert);
+    // Same ruleId and seqNo, so the panel replaces the provisional alert.
+    alerts[alerts.indexOf(provisional)] = alert;
     publishState();
     hub.broadcastAlert(meetingId, alert);
 
+    await recordAndEscalate(alert, segment);
+  }
+
+  async function recordAndEscalate(alert, segment) {
     await auditChain.append(meetingId, {
       id: `${meetingId}:${alert.ruleId}:${alert.seqNo}`,
       kind: 'alert',
@@ -88,8 +111,13 @@ export function createPipeline({
     });
   }
 
-  const disclosureTimer = setInterval(() => {
-    const changes = disclosures.evaluate(segments);
+  /**
+   * Checked per segment, against that segment only. Already-satisfied
+   * disclosures are skipped, so this is a handful of regex tests per line, and
+   * the checkmark lands as soon as the words are said.
+   */
+  function checkDisclosures(segment) {
+    const changes = disclosures.evaluate([segment]);
     if (changes.length === 0) return;
 
     publishState();
@@ -110,10 +138,13 @@ export function createPipeline({
         })
         .catch((err) => logger.error?.(`failed to record disclosure ${change.id}: ${err.message}`));
     }
-  }, config.disclosureIntervalSeconds * 1000);
+  }
 
-  // Do not hold the process open on this interval alone.
-  disclosureTimer.unref?.();
+  // Publish the full checklist now. Changes are only broadcast as they happen,
+  // so a panel that subscribed before this pipeline existed would otherwise
+  // show no disclosures until the first one was satisfied.
+  publishState();
+  hub.broadcastDisclosureState(meetingId, disclosures.state());
 
   return {
     /** Called for every normalized transcript segment. */
@@ -122,6 +153,7 @@ export function createPipeline({
       if (segments.length > MAX_BUFFERED_SEGMENTS) segments.shift();
 
       hub.broadcastSegment(meetingId, segment);
+      checkDisclosures(segment);
 
       // Deterministic pass is synchronous and inline; it is fast enough.
       const candidates = screener.screen(segment, segment.tStartMs);
@@ -145,9 +177,8 @@ export function createPipeline({
       });
     },
 
-    stop() {
-      clearInterval(disclosureTimer);
-    },
+    /** Nothing to release now that disclosures are checked per segment. */
+    stop() {},
 
     snapshot: () => ({ alerts, disclosures: disclosures.state() }),
   };

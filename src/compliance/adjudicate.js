@@ -97,6 +97,48 @@ function withTimeout(promise, timeoutMs) {
  *
  * @returns {Promise<object>} alert
  */
+/**
+ * The alert when adjudication is turned off. `adjudication: 'off'` tells the
+ * panel there is no verdict to show, pending or otherwise.
+ */
+export function ruleOnlyAlert({ candidate, rule }) {
+  return {
+    ruleId: candidate.ruleId,
+    severity: candidate.severity,
+    quote: candidate.matchedText,
+    seqNo: candidate.seqNo,
+    guidance: rule.guidance,
+    violation: null,
+    rationale: null,
+    suggestedLanguage: rule.guidance,
+    adjudicated: false,
+    adjudication: 'off',
+  };
+}
+
+/**
+ * The alert as it stands the moment the rule matches, before any model call.
+ * Sent to the panel immediately so the rep sees it while the words are still
+ * fresh; the adjudicated version replaces it when the verdict arrives.
+ */
+export function provisionalAlert({ candidate, rule, modelId }) {
+  return {
+    ruleId: candidate.ruleId,
+    severity: candidate.severity,
+    quote: candidate.matchedText,
+    seqNo: candidate.seqNo,
+    guidance: rule.guidance,
+    modelId,
+    promptVersion: PROMPT_VERSION,
+    violation: null,
+    confidence: 0,
+    rationale: 'Checking context…',
+    suggestedLanguage: rule.guidance,
+    adjudicated: false,
+    pending: true,
+  };
+}
+
 export async function adjudicate({
   candidate,
   rule,

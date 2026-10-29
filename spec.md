@@ -100,7 +100,7 @@ rtms-compliance-sample-js/
 │       ├── useComplianceSocket.js
 │       └── components/        AlertList, DisclosureChecklist, TranscriptView
 ├── rule-packs/
-│   ├── fin-us-retail-v3.yaml
+│   ├── fin-us-retail-v4.yaml
 │   └── health-us-intake-v1.yaml
 ├── tests/
 │   ├── unit/                  screen, audit, packs, segments, disclosures
@@ -209,7 +209,7 @@ Required. Compliance tooling has an obvious federal and public-sector audience.
 21. A segment matching two rules produces two candidates.
 22. A segment matching no rule produces zero candidates and triggers no LLM call.
 23. A second match of the same `ruleId` within 60 seconds of the first produces no new candidate; a match at 61 seconds does.
-24. Screening a 200-character segment against the shipped `fin-us-retail-v3` pack completes in under 5ms.
+24. Screening a 200-character segment against the shipped `fin-us-retail-v4` pack completes in under 5ms.
 
 ### Adjudication
 

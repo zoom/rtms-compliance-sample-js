@@ -30,6 +30,9 @@ services:
       PORT: 3000
     ports:
       - '3000:3000'
+    # The native SDK's own log files, readable on the host for debugging.
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy

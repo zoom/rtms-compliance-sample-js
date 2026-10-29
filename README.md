@@ -64,12 +64,12 @@ Outside production the app generates what only it cares about and defaults the l
 
 Everything else has a development answer:
 
-| Variable       | Development behavior                                                                                                                   |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `JWT_SECRET`   | Generated per boot, with a warning. Required in production.                                                                            |
-| `DATABASE_URL` | Defaults to the compose Postgres. Required in production.                                                                              |
-| `PUBLIC_URL`   | Defaults to `http://localhost:$PORT`. Required in production.                                                                          |
-| `LLM_API_KEY`  | Optional everywhere. OpenRouter serves free models without one, and a failed adjudication still emits the alert, marked unadjudicated. |
+| Variable                              | Development behavior                                                                                                                                                                                                                                                                                       |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`                          | Generated per boot, with a warning. Required in production.                                                                                                                                                                                                                                                |
+| `DATABASE_URL`                        | Defaults to the compose Postgres. Required in production.                                                                                                                                                                                                                                                  |
+| `PUBLIC_URL`                          | Defaults to `http://localhost:$PORT`. Required in production.                                                                                                                                                                                                                                              |
+| `ADJUDICATION_ENABLED`, `LLM_API_KEY` | Off by default: alerts come from the rule pack alone, with no model call and no verdict shown. Set `ADJUDICATION_ENABLED=true` and an `LLM_API_KEY` (from [openrouter.ai](https://openrouter.ai)) to have a model review each match in context. For a keyless local model server, set any placeholder key. |
 
 `NODE_ENV=production` generates nothing and defaults nothing. It fails at boot with every missing variable named at once.
 
@@ -89,15 +89,44 @@ npm run env:init      # write .env at mode 0600; refuses to clobber an existing 
    ngrok http 3000 --domain=your-subdomain.ngrok-free.app
    ```
 
-2. **Create a Zoom App** at [marketplace.zoom.us](https://marketplace.zoom.us/): **Develop** > **Build App** > **General App**. Or upload [`manifest.json`](manifest.json) to skip the manual configuration.
+2. **Create a Zoom App** at [marketplace.zoom.us](https://marketplace.zoom.us/): **Develop** > **Build App** > **General App** > **User-managed**. Replace `YOUR-NGROK-URL` below with your ngrok domain, without `https://` where the field asks for a domain.
 
-   - OAuth Redirect URL: `https://YOUR-NGROK-URL/api/auth/callback`
-   - Scopes: `zoomapp:inmeeting` only
+   You can import [`manifest.json`](manifest.json) instead of filling in most of these screens, but it does not cover Real-Time Media Streams. Do step 2d by hand either way, then check every item below before testing.
 
-   The redirect URL is required by the Marketplace form, but this sample never completes a token exchange and implements no `/api/auth/callback` route. It makes no server-side Zoom API calls at all: panel identity comes from the Zoom Apps SDK in-client, transcripts come over RTMS, and the attendee roster comes from the RTMS `onParticipantEvent` callback. So it requests exactly one scope. Add `meeting:read:meeting` or `user:read` when you add the REST call that needs them, not before.
-   - **Features** > **Zoom App SDK** > enable **Real-Time Media Streams** > select **Transcripts**
-   - Surface: Home URL `https://YOUR-NGROK-URL`
-   - Event Subscriptions: endpoint `https://YOUR-NGROK-URL/api/rtms/webhook`, events `meeting.rtms_started` and `meeting.rtms_stopped`
+   **2a. Basic Information**
+   - **OAuth Redirect URL:** `https://YOUR-NGROK-URL/api/auth/callback`
+   - **OAuth Allow List:** `https://YOUR-NGROK-URL`
+
+   The redirect URL is required by the form, but this sample never completes a token exchange and implements no `/api/auth/callback` route. It makes no server-side Zoom API calls: panel identity comes from the Zoom Apps SDK in-client, transcripts come over RTMS, and the attendee roster comes from the RTMS `onParticipantEvent` callback.
+
+   **2b. Features > Access**
+   - Copy the **Secret Token** into `ZM_RTMS_WEBHOOK_SECRET`.
+   - `ZM_RTMS_CLIENT`, `ZM_RTMS_SECRET`, and `ZM_RTMS_WEBHOOK_SECRET` must all come from this app, the one you install in step 2f. If they come from another app, Zoom's webhooks fail signature verification and the server logs `rejected webhook: signature mismatch: delivery is from app …`, naming both client IDs.
+   - Turn on **Event Subscription**. Endpoint URL: `https://YOUR-NGROK-URL/api/rtms/webhook`. Add the events **RTMS Started** (`meeting.rtms_started`) and **RTMS Stopped** (`meeting.rtms_stopped`). The app must be running for **Validate** to pass, so you can come back to this after step 4.
+
+   **2c. Features > Surface**
+   - **Select where to use your app:** check **Meetings**.
+   - **Home URL:** `https://YOUR-NGROK-URL`
+   - **Domain Allow List:** add `YOUR-NGROK-URL` and `appssdk.zoom.us`.
+   - **In-client App Features > Zoom App SDK:** click **Add APIs** and enable all six APIs the panel calls:
+     - `getMeetingContext`
+     - `getMeetingUUID`
+     - `getRunningContext`
+     - `getUserContext`
+     - `startRTMS`, which the panel calls when it opens
+     - `onRTMSStatusChange`
+
+     If any of these are missing, the panel fails with `No Permission for this API. [code:80004, reason:app_not_support]`.
+
+   **2d. Features > Surface > Real-Time Media Streams**
+   - Turn it on and select **Transcripts**.
+
+   **2e. Scopes**
+   - Add `zoomapp:inmeeting` and nothing else. Add `meeting:read:meeting` or `user:read` when you add the REST call that needs them, not before.
+
+   **2f. Local Test**
+   - Click **Add App** and authorize it. This installs the app for your Zoom user.
+   - **Every time you change APIs, scopes, or RTMS settings, remove the app from your Zoom client and add it again from Local Test.** The client caches what the app is allowed to do at install time, so changes in Marketplace do not apply until you reinstall.
 
 3. **Fill `.env`** with the Client ID, Client Secret, Webhook Secret Token, and your ngrok URL. `npm run env:init` already generated `JWT_SECRET`; nothing else needs generating.
 
@@ -107,9 +136,9 @@ npm run env:init      # write .env at mode 0600; refuses to clobber an existing 
    docker compose up --build
    ```
 
-   Postgres on 5432, the app on 3000 (Express plus the RTMS client in one process), the panel dev server on 3001.
+   Postgres on 5432 and the app on 3000: Express, the RTMS client, and the built panel, all in one process. On Apple Silicon the app image builds as `linux/amd64` under emulation, because `@zoom/rtms` has no linux-arm64 binary. Expect the first build to be slow.
 
-5. **Try it.** Join a meeting, open **Apps**, select your app, choose a rule pack, and start transcription. Say something the pack prohibits, like "we can offer a guaranteed return."
+5. **Try it.** Join a meeting as the host, open **Apps**, and select your app. Screening starts automatically when the panel opens. The badge reads **Live** only once this server is receiving the transcript. If it stays on **Starting** and then times out, check the server log: a `rejected webhook:` line says why, and no webhook at all means Zoom is not sending this app's events to your Event Subscription URL. Say something the pack prohibits, like "we can offer a guaranteed return."
 
 </details>
 
@@ -120,7 +149,7 @@ npm run env:init      # write .env at mode 0600; refuses to clobber an existing 
 | [Deploy to Render](https://render.com/deploy?repo=https://github.com/zoom/rtms-compliance-sample-js) | Backend, frontend, database |
 | [Deploy to Railway](https://railway.app/new?repo=https://github.com/zoom/rtms-compliance-sample-js)  | Backend, frontend, database |
 
-**Deploy anywhere:** the [Dockerfile](Dockerfile) is platform-agnostic, but the base image has two hard constraints from the RTMS native addon. It needs glibc, so Alpine is out, and it needs libstdc++ with `GLIBCXX_3.4.31` or newer, so Debian bookworm is out too. The image uses `node:24-trixie-slim`. Both failures happen at container start rather than at build time, so verify with a real boot before changing that line.
+**Deploy anywhere:** the [Dockerfile](Dockerfile) is platform-agnostic, but the base image has three hard constraints from the RTMS native addon. It needs glibc, so Alpine is out. It needs libstdc++ with `GLIBCXX_3.4.31` or newer, so Debian bookworm is out too. And it must be `linux/amd64`, since there is no linux-arm64 prebuild. The image uses `node:24-trixie-slim` pinned to `linux/amd64`. All three failures happen at container start rather than at build time, so verify with a real boot before changing that line.
 
 ---
 
@@ -164,7 +193,7 @@ Zoom Meeting ──1. webhook──▶ Express + @zoom/rtms
 
 **Record coverage gaps.** `onMediaConnectionInterrupted` fires when the media connection drops. An audit log that silently omits the gap implies the call was screened end to end, which is a stronger claim than the data supports.
 
-**Timestamps are already Unix milliseconds.** Older RTMS examples divide by 1000 to convert from microseconds. Doing that here puts every segment in 1970.
+**Transcript timestamps arrive in microseconds.** `src/rtms/segments.js` converts them to milliseconds, which everything downstream assumes. Without the conversion, the 60-second suppression window and the model's 30-second context window both shrink by a factor of 1000.
 
 **Deduplicate by `rtms_stream_id`, not `meeting_uuid`.** One meeting can produce several streams when a media server fails over.
 
@@ -175,7 +204,7 @@ Zoom Meeting ──1. webhook──▶ Express + @zoom/rtms
 A rule pack is the contract between your compliance team and this code. Compliance owns the YAML; engineering owns the loader.
 
 ```yaml
-id: fin-us-retail-v3 # version suffix required; never edit in place
+id: fin-us-retail-v4 # version suffix required; never edit in place
 jurisdiction: US
 applies_to: [retail-investment-review]
 
@@ -194,7 +223,7 @@ required_disclosures:
 
 `match` and `satisfied_by` entries are case-insensitive regular expressions, compiled once at load.
 
-Two shipped examples: `fin-us-retail-v3` and `health-us-intake-v1`. Both are illustrative.
+Two shipped examples: `fin-us-retail-v4` and `health-us-intake-v1`. Both are illustrative.
 
 Keep one pack per jurisdiction and meeting type rather than one pack with conditionals. Small packs are easier for a compliance reviewer to sign off on, and pinning a version per meeting stays meaningful.
 

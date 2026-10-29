@@ -28,13 +28,24 @@ const TIMESTAMP_HEADER = 'x-zm-request-timestamp';
  * @returns {boolean}
  */
 export function verifySignature(rawBody, timestamp, signature, secret) {
-  if (!signature || !timestamp || !secret) return false;
+  return signatureFailure(rawBody, timestamp, signature, secret) === null;
+}
+
+/**
+ * Why a signature does not verify, or null if it does. The reason is for the
+ * server log only; the caller still gets a bare 401.
+ */
+export function signatureFailure(rawBody, timestamp, signature, secret) {
+  if (!secret) return 'no webhook secret configured';
+  if (!signature || !timestamp) return 'missing signature headers';
 
   const requestTimestamp = Number.parseInt(timestamp, 10);
-  if (Number.isNaN(requestTimestamp)) return false;
+  if (Number.isNaN(requestTimestamp)) return 'unparseable timestamp';
 
   const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - requestTimestamp) > REPLAY_WINDOW_SECONDS) return false;
+  if (Math.abs(now - requestTimestamp) > REPLAY_WINDOW_SECONDS) {
+    return `timestamp outside the ${REPLAY_WINDOW_SECONDS}s replay window`;
+  }
 
   const body = Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody);
   const expected =
@@ -42,9 +53,11 @@ export function verifySignature(rawBody, timestamp, signature, secret) {
 
   // timingSafeEqual throws on length mismatch, so compare lengths first. The
   // length of a signature is not a secret.
-  if (signature.length !== expected.length) return false;
+  const matches =
+    signature.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  return matches ? null : 'signature mismatch';
 }
 
 /**
@@ -63,7 +76,12 @@ export function buildValidationResponse(plainToken, secret) {
 }
 
 const IGNORE = { type: 'ignore' };
-const unauthorized = () => ({ status: 401, body: { error: 'Unauthorized' }, action: IGNORE });
+const unauthorized = (reason) => ({
+  status: 401,
+  body: { error: 'Unauthorized' },
+  action: IGNORE,
+  reason,
+});
 
 /**
  * Decide what to do with an inbound webhook delivery.
@@ -72,23 +90,24 @@ const unauthorized = () => ({ status: 401, body: { error: 'Unauthorized' }, acti
  * @param {Buffer} args.rawBody exact request bytes
  * @param {Record<string,string>} args.headers request headers, lowercased keys
  * @param {string} args.secret webhook secret token
- * @returns {{status: number, body: object, action: {type: string, payload?: object}}}
+ * @param {string} [args.clientId] this app's client ID, to explain a mismatch
+ * @returns {{status: number, body: object, action: {type: string, payload?: object}, reason?: string}}
  */
-export function handleWebhook({ rawBody, headers = {}, secret }) {
+export function handleWebhook({ rawBody, headers = {}, secret, clientId }) {
   let envelope;
   try {
     envelope = JSON.parse(Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : String(rawBody));
   } catch {
     // An unparseable body cannot be acted on, and echoing a parse error back
     // to an unauthenticated caller is free reconnaissance.
-    return unauthorized();
+    return unauthorized('unparseable body');
   }
 
   if (envelope?.event === 'endpoint.url_validation') {
     // Validation deliveries carry no signature. Verifying first would make it
     // impossible to ever register the endpoint.
     const plainToken = envelope.payload?.plainToken;
-    if (!plainToken) return unauthorized();
+    if (!plainToken) return unauthorized('validation request without plainToken');
 
     return {
       status: 200,
@@ -99,8 +118,24 @@ export function handleWebhook({ rawBody, headers = {}, secret }) {
 
   const signature = headers[SIGNATURE_HEADER];
   const timestamp = headers[TIMESTAMP_HEADER];
-  if (!verifySignature(rawBody, timestamp, signature, secret)) {
-    return unauthorized();
+  const failure = signatureFailure(rawBody, timestamp, signature, secret);
+  if (failure) {
+    // Zoom names the sending app in a clientid header. It is unauthenticated,
+    // so it never decides anything, but when it differs from ours it is
+    // almost always the reason the signature failed: .env holds another
+    // app's credentials.
+    const sender = headers.clientid;
+    if (failure === 'signature mismatch' && sender && clientId && sender !== clientId) {
+      return unauthorized(
+        `signature mismatch: delivery is from app ${sender}, but ZM_RTMS_CLIENT is ${clientId}. ` +
+          'ZM_RTMS_CLIENT, ZM_RTMS_SECRET, and ZM_RTMS_WEBHOOK_SECRET must all come from the app you installed.',
+      );
+    }
+    return unauthorized(
+      failure === 'signature mismatch'
+        ? 'signature mismatch: ZM_RTMS_WEBHOOK_SECRET does not match the Secret Token on the app'
+        : failure,
+    );
   }
 
   const payload = envelope.payload ?? {};

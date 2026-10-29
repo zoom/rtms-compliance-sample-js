@@ -20,6 +20,13 @@ const ALERT_ROLES = new Set(['representative', 'host']);
 
 const EMPTY_STATE = { alerts: [], disclosures: [] };
 
+/**
+ * Whether the backend is actually receiving the RTMS stream for a meeting.
+ * The panel must not claim to be screening anything unless this is
+ * 'streaming': an open WebSocket to this server says nothing about audio.
+ */
+export const STREAM_STATES = new Set(['idle', 'streaming', 'interrupted']);
+
 export function createAlertHub({ jwtSecret, onDismiss, logger = console }) {
   /** socket -> { claims } */
   const sockets = new Map();
@@ -27,6 +34,8 @@ export function createAlertHub({ jwtSecret, onDismiss, logger = console }) {
   const subscribers = new Map();
   /** meetingId -> { alerts, disclosures } for reconnect snapshots */
   const meetingState = new Map();
+  /** meetingId -> stream state. Separate from meetingState, which the pipeline replaces wholesale. */
+  const streamState = new Map();
 
   const send = (socket, type, data) => socket.send(JSON.stringify({ type, data }));
 
@@ -34,6 +43,19 @@ export function createAlertHub({ jwtSecret, onDismiss, logger = console }) {
     logger.warn?.(`rejecting websocket: ${reason}`);
     socket.close(WS_CLOSE_UNAUTHORIZED, reason);
     sockets.delete(socket);
+  }
+
+  /** Stream state is not sensitive; every subscriber gets it. */
+  function setStreamState(meetingId, state) {
+    if (!STREAM_STATES.has(state)) throw new Error(`unknown stream state: ${state}`);
+    if ((streamState.get(meetingId) ?? 'idle') === state) return;
+
+    if (state === 'idle') streamState.delete(meetingId);
+    else streamState.set(meetingId, state);
+
+    for (const socket of subscribers.get(meetingId) ?? []) {
+      send(socket, 'stream.state', { state });
+    }
   }
 
   function canSeeAlerts(claims) {
@@ -81,6 +103,7 @@ export function createAlertHub({ jwtSecret, onDismiss, logger = console }) {
           send(socket, 'state.snapshot', {
             alerts: canSeeAlerts(claims) ? state.alerts : [],
             disclosures: state.disclosures,
+            stream: streamState.get(message.meetingId) ?? 'idle',
           });
           return undefined;
         }
@@ -101,6 +124,17 @@ export function createAlertHub({ jwtSecret, onDismiss, logger = console }) {
           return undefined;
         }
 
+        case 'client.rtms': {
+          // Diagnostic only: what the Zoom client reported to the panel.
+          const detail = { ...message };
+          delete detail.type;
+          delete detail.meetingId;
+          logger.info?.(
+            `Zoom client RTMS for meeting ${claims.meetingId}: ${JSON.stringify(detail)}`,
+          );
+          return undefined;
+        }
+
         default:
           logger.warn?.(`ignoring unknown message type: ${message?.type}`);
           return undefined;
@@ -109,7 +143,10 @@ export function createAlertHub({ jwtSecret, onDismiss, logger = console }) {
 
     disconnect(socket) {
       sockets.delete(socket);
-      for (const set of subscribers.values()) set.delete(socket);
+      for (const [meetingId, set] of subscribers) {
+        set.delete(socket);
+        if (set.size === 0) subscribers.delete(meetingId);
+      }
     },
 
     /** Compliance alerts: representative and host only. */
@@ -133,16 +170,33 @@ export function createAlertHub({ jwtSecret, onDismiss, logger = console }) {
       }
     },
 
+    setStreamState,
+
+    /** Why a stream could not start. Not sensitive; every subscriber gets it. */
+    broadcastStreamError(meetingId, message) {
+      for (const socket of subscribers.get(meetingId) ?? []) {
+        send(socket, 'stream.error', { message });
+      }
+    },
+
+    streamStateOf: (meetingId) => streamState.get(meetingId) ?? 'idle',
+
     setMeetingState(meetingId, state) {
       meetingState.set(meetingId, { ...EMPTY_STATE, ...state });
     },
 
     subscriberCount: (meetingId) => subscribers.get(meetingId)?.size ?? 0,
 
-    /** Drop retained state once a meeting's chain is closed. */
+    /**
+     * Drop retained state once a meeting's chain is closed.
+     *
+     * Subscribers stay. The panel is still open in the meeting, and if RTMS is
+     * started again it must receive the new stream without reconnecting.
+     * Sockets leave the subscriber set when they disconnect.
+     */
     forget(meetingId) {
       meetingState.delete(meetingId);
-      subscribers.delete(meetingId);
+      setStreamState(meetingId, 'idle');
     },
   };
 }

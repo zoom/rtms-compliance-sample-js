@@ -82,7 +82,7 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
           PUBLIC_URL: https://ci.example.invalid
           JWT_SECRET: ci-jwt-secret-000000000000000000000
-          RULE_PACK_ID: fin-us-retail-v3
+          RULE_PACK_ID: fin-us-retail-v4
         run: |
           docker run -d --name compliance-ci -p 3000:3000 \
             -e ZM_RTMS_CLIENT -e ZM_RTMS_SECRET -e ZM_RTMS_WEBHOOK_SECRET \

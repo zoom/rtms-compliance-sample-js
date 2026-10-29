@@ -121,9 +121,9 @@ describe('loadPackDir', () => {
 describe('shipped rule packs', () => {
   const shipped = path.join(FIXTURES, '..', '..', '..', 'rule-packs');
 
-  test('should load fin-us-retail-v3 without error', () => {
-    const pack = loadPack(path.join(shipped, 'fin-us-retail-v3.yaml'));
-    assert.equal(pack.id, 'fin-us-retail-v3');
+  test('should load fin-us-retail-v4 without error', () => {
+    const pack = loadPack(path.join(shipped, 'fin-us-retail-v4.yaml'));
+    assert.equal(pack.id, 'fin-us-retail-v4');
   });
 
   test('should load health-us-intake-v1 without error', () => {
@@ -133,7 +133,7 @@ describe('shipped rule packs', () => {
 
   test('should carry a version suffix in every shipped pack id', () => {
     // Packs are versioned artifacts, never edited in place.
-    for (const name of ['fin-us-retail-v3.yaml', 'health-us-intake-v1.yaml']) {
+    for (const name of ['fin-us-retail-v4.yaml', 'health-us-intake-v1.yaml']) {
       const pack = loadPack(path.join(shipped, name));
       assert.match(pack.id, /-v\d+$/, `${name} id must end in a version suffix`);
     }

@@ -358,3 +358,77 @@ describe('supervisor escalation', () => {
     );
   });
 });
+
+describe('stream state', () => {
+  const subscribe = (meetingId = 'meeting-A', role = 'representative') => {
+    const socket = fakeSocket();
+    hub.connect(socket, { token: token({ meetingId, userId: REP_ID, role }) });
+    hub.handleMessage(socket, { type: 'subscribe', meetingId });
+    return socket;
+  };
+
+  test('should report idle in the snapshot before any stream has joined', () => {
+    const rep = subscribe();
+
+    assert.equal(rep.typed('state.snapshot')[0].data.stream, 'idle');
+  });
+
+  test('should report a running stream in the snapshot to a late subscriber', () => {
+    hub.setStreamState('meeting-A', 'streaming');
+
+    const rep = subscribe();
+
+    assert.equal(rep.typed('state.snapshot')[0].data.stream, 'streaming');
+  });
+
+  test('should broadcast transitions to every subscriber, including clients', () => {
+    const rep = subscribe('meeting-A', 'representative');
+    const client = subscribe('meeting-A', 'client');
+
+    hub.setStreamState('meeting-A', 'streaming');
+    hub.setStreamState('meeting-A', 'interrupted');
+
+    for (const socket of [rep, client]) {
+      assert.deepEqual(
+        socket.typed('stream.state').map((m) => m.data.state),
+        ['streaming', 'interrupted'],
+      );
+    }
+  });
+
+  test('should not broadcast a state the meeting is already in', () => {
+    const rep = subscribe();
+
+    hub.setStreamState('meeting-A', 'streaming');
+    hub.setStreamState('meeting-A', 'streaming');
+
+    assert.equal(rep.typed('stream.state').length, 1);
+  });
+
+  test('should not leak stream state across meetings', () => {
+    const other = subscribe('meeting-B');
+
+    hub.setStreamState('meeting-A', 'streaming');
+
+    assert.equal(other.typed('stream.state').length, 0);
+  });
+
+  test('should reject an unknown state', () => {
+    assert.throws(() => hub.setStreamState('meeting-A', 'live'), /unknown stream state/);
+  });
+
+  test('should go idle on forget and keep delivering if the stream restarts', () => {
+    const rep = subscribe();
+    hub.setStreamState('meeting-A', 'streaming');
+
+    hub.forget('meeting-A');
+    hub.setStreamState('meeting-A', 'streaming');
+    hub.broadcastSegment('meeting-A', { seqNo: 1, text: 'hello' });
+
+    assert.deepEqual(
+      rep.typed('stream.state').map((m) => m.data.state),
+      ['streaming', 'idle', 'streaming'],
+    );
+    assert.equal(rep.typed('transcript.segment').length, 1);
+  });
+});

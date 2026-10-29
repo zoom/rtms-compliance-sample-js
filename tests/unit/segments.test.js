@@ -40,9 +40,20 @@ describe('createSegmentNormalizer', () => {
 
     const segment = normalize(buffer, buffer.length, timestamp, { userId: 42, userName: 'Rep' });
 
-    // The SDK documents media callback timestamps as Unix milliseconds.
+    // Already-millisecond values pass through unchanged.
     // Dividing by 1000 here would be a silent 1000x error.
     assert.equal(segment.tStartMs, timestamp);
+  });
+
+  test('should convert a microsecond callback timestamp to Unix milliseconds', () => {
+    // The value @zoom/rtms 1.1.0 actually delivered for 2026-10-29 18:53:44 UTC.
+    const normalize = createSegmentNormalizer();
+    const buffer = Buffer.from('hello', 'utf8');
+
+    const segment = normalize(buffer, buffer.length, 1793300024893609, { userId: 42 });
+
+    assert.equal(segment.tStartMs, 1793300024893);
+    assert.equal(new Date(segment.tStartMs).toISOString(), '2026-10-29T18:53:44.893Z');
   });
 
   test('should assign sequence numbers starting at 0 and incrementing by 1', () => {

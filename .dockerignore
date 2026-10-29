@@ -20,4 +20,5 @@ build
 coverage
 tests
 *.log
+logs
 .DS_Store

@@ -14,7 +14,7 @@ const baseRecord = (overrides = {}) => ({
   id: 'rec-1',
   seqNo: 7,
   ruleId: 'guaranteed-return',
-  rulePackVersion: 'fin-us-retail-v3',
+  rulePackVersion: 'fin-us-retail-v4',
   severity: 'high',
   quote: 'we can offer a guaranteed return',
   verdict: 'violation',

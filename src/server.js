@@ -107,11 +107,16 @@ const prisma = new PrismaClient();
 const transcripts = createTranscriptStore(prisma);
 const auditChain = createAuditChain(createAuditStore(prisma));
 const hub = createAlertHub({ jwtSecret: config.jwtSecret });
-const llm = createLlmClient({
-  baseUrl: config.llmBaseUrl,
-  apiKey: config.llmApiKey,
-  model: config.llmModel,
-});
+// Adjudication is opt-in (ADJUDICATION_ENABLED). Off, the pipeline gets no
+// model and alerts come straight from the rule pack.
+const llm = config.adjudicationEnabled
+  ? createLlmClient({
+      baseUrl: config.llmBaseUrl,
+      apiKey: config.llmApiKey,
+      model: config.llmModel,
+    })
+  : null;
+console.log(`LLM adjudication: ${llm ? `on (${config.llmModel})` : 'off'}`);
 
 /** meetingId -> pipeline for the meeting currently in progress */
 const pipelines = new Map();
@@ -145,9 +150,14 @@ function closePipeline(meetingId) {
 const sessions = createSessionManager({
   clientFactory: () => new rtms.Client(),
   transcriptLanguage: rtms.TranscriptLanguage[config.transcriptLanguage],
+  joinOkReason: rtms.RTMS_SDK_OK,
+  credentials: { client: config.zoomClientId, secret: config.zoomClientSecret },
   proxyUrl: config.rtmsProxyUrl,
 
   onSegment: (segment, { meetingId }) => {
+    // Transcripts flowing again after an interruption means the stream recovered.
+    if (hub.streamStateOf(meetingId) === 'interrupted') hub.setStreamState(meetingId, 'streaming');
+
     // Screen and broadcast first. Persistence must never delay an alert.
     pipelineFor(meetingId).onSegment(segment);
 
@@ -159,6 +169,10 @@ const sessions = createSessionManager({
   audit: {
     open: (meetingId, reason) => {
       console.log(`RTMS joined for meeting ${meetingId} (reason ${reason})`);
+      hub.setStreamState(meetingId, 'streaming');
+      // Create the pipeline on join, not on the first segment, so the panel
+      // gets the disclosure checklist before anyone speaks.
+      pipelineFor(meetingId);
       transcripts
         .ensureMeeting({ meetingId, rulePackVersion: config.rulePackId })
         .catch((err) => console.error(`failed to record meeting: ${err.message}`));
@@ -168,8 +182,14 @@ const sessions = createSessionManager({
       transcripts.endMeeting(meetingId);
       closePipeline(meetingId);
     },
+    joinFailed: (meetingId, reason) => {
+      // Nothing was opened, so there is no chain to close. Tell the panel why,
+      // rather than leaving it to time out.
+      hub.broadcastStreamError(meetingId, `The server could not join the stream (${reason}).`);
+    },
     coverageGap: (meetingId, timestamp) => {
       console.warn(`coverage gap in meeting ${meetingId} at ${timestamp}`);
+      hub.setStreamState(meetingId, 'interrupted');
       pipelineFor(meetingId)
         .recordCoverageGap(timestamp)
         .catch((err) => console.error(`failed to record coverage gap: ${err.message}`));
@@ -186,30 +206,28 @@ const app = express();
 app.disable('x-powered-by');
 
 /**
- * The webhook route takes the raw body, not parsed JSON.
- *
- * Zoom signs the exact bytes it sent. express.json() would hand us a parsed
- * object, and re-serializing it produces different bytes and a different
- * HMAC. express.raw() guarantees req.body is the original Buffer.
- *
- * The SDK also offers rtms.createWebhookHandler() for mounting on an existing
- * app. We verify here instead so the security-critical path stays in code
- * this repo tests directly.
+ * The SDK parses the body and hands the raw callback (payload, req, res). We
+ * verify the signature before acting. Zoom sends compact JSON, so
+ * JSON.stringify(payload) reproduces the bytes it signed.
  */
-app.post(WEBHOOK_PATH, express.raw({ type: '*/*' }), (req, res) => {
-  const { status, body, action } = handleWebhook({
-    rawBody: req.body,
+const webhookHandler = rtms.createWebhookHandler((payload, req, res) => {
+  const { status, body, action, reason } = handleWebhook({
+    rawBody: JSON.stringify(payload),
     headers: req.headers,
     secret: config.webhookSecret,
+    clientId: config.zoomClientId,
   });
 
-  // Acknowledge before doing any work. Zoom retries on a slow response, and a
-  // retry would be a second join for the same stream.
-  res.status(status).json(body);
+  if (status === 401) console.warn(`rejected webhook: ${reason}`);
+
+  res.writeHead(status, { 'content-type': 'application/json' });
+  res.end(JSON.stringify(body));
 
   if (action.type === 'stream_start') sessions.startStream(action.payload);
   if (action.type === 'stream_stop') sessions.stopStream(action.payload);
-});
+}, WEBHOOK_PATH);
+
+app.post(WEBHOOK_PATH, webhookHandler);
 
 app.use(express.json());
 

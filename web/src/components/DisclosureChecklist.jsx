@@ -15,7 +15,8 @@ export function DisclosureChecklist({ disclosures }) {
     );
   }
 
-  const pendingHigh = disclosures.filter((d) => d.status === 'pending' && d.severity === 'high');
+  // Every item in the pack is required, whatever its severity.
+  const pending = disclosures.filter((d) => d.status === 'pending');
 
   return (
     <section className="panel">
@@ -26,10 +27,9 @@ export function DisclosureChecklist({ disclosures }) {
         </span>
       </h2>
 
-      {pendingHigh.length > 0 && (
+      {pending.length > 0 && (
         <p className="warning">
-          {pendingHigh.length} required disclosure{pendingHigh.length > 1 ? 's' : ''} still
-          outstanding.
+          {pending.length} required disclosure{pending.length > 1 ? 's' : ''} still outstanding.
         </p>
       )}
 

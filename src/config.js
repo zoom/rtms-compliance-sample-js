@@ -85,6 +85,17 @@ const DEFAULT_HOST = 'https://zoom.us';
 
 const isBlank = (value) => value == null || String(value).trim() === '';
 
+/** Only the literal "true" enables a flag; anything else is off. */
+function readFlag(env, name) {
+  const raw = env[name];
+  if (isBlank(raw)) return false;
+  const value = String(raw).trim().toLowerCase();
+  if (value !== 'true' && value !== 'false') {
+    throw new ConfigError(`${name} must be "true" or "false", got: ${raw}`);
+  }
+  return value === 'true';
+}
+
 function requireInt(env, name, fallback) {
   const raw = env[name];
   if (isBlank(raw)) return fallback;
@@ -157,8 +168,10 @@ export function loadConfig(env = process.env) {
     rulePackDir: resolved.RULE_PACK_DIR?.trim() || 'rule-packs',
     transcriptLanguage: resolved.TRANSCRIPT_LANGUAGE?.trim() || 'ENGLISH',
     ruleSuppressionWindowSeconds: requireInt(resolved, 'RULE_SUPPRESSION_WINDOW_SECONDS', 60),
-    disclosureIntervalSeconds: requireInt(resolved, 'DISCLOSURE_INTERVAL_SECONDS', 20),
 
+    // Off unless asked for. When off, alerts come from the rule pack alone and
+    // nothing leaves the process for a model.
+    adjudicationEnabled: readFlag(resolved, 'ADJUDICATION_ENABLED'),
     llmBaseUrl: resolved.LLM_BASE_URL?.trim() || 'https://openrouter.ai/api/v1',
     llmModel: resolved.LLM_MODEL?.trim() || 'anthropic/claude-sonnet-5',
     llmTimeoutMs: requireInt(resolved, 'LLM_TIMEOUT_MS', 5000),
@@ -176,10 +189,17 @@ export function loadConfig(env = process.env) {
     zoomClientSecret: resolved.ZM_RTMS_SECRET,
     webhookSecret: resolved.ZM_RTMS_WEBHOOK_SECRET,
     jwtSecret: resolved.JWT_SECRET,
-    // Optional: OpenRouter serves free models without a key, and a failed
-    // adjudication degrades to an unadjudicated alert rather than losing it.
+    // Used only when ADJUDICATION_ENABLED=true.
     llmApiKey: isBlank(resolved.LLM_API_KEY) ? undefined : resolved.LLM_API_KEY,
   };
+
+  // Enabling adjudication without a key would fail on every alert. A keyless
+  // local model server can be given any placeholder.
+  if (config.adjudicationEnabled && !secrets.llmApiKey) {
+    throw new ConfigError('ADJUDICATION_ENABLED=true requires LLM_API_KEY', {
+      missing: ['LLM_API_KEY'],
+    });
+  }
 
   for (const key of SECRET_KEYS) {
     Object.defineProperty(config, key, {

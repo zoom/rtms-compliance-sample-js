@@ -187,6 +187,7 @@ describe('stopping a stream', () => {
   test('should close the audit chain on stop', () => {
     const m = manager();
     m.startStream(rtmsStartedPayload().payload);
+    fake.latest().emitJoinConfirm(0);
 
     m.stopStream(rtmsStoppedPayload().payload);
 
@@ -206,6 +207,7 @@ describe('stopping a stream', () => {
     // server drops the session. onLeave is the reliable signal.
     const m = manager();
     m.startStream(rtmsStartedPayload().payload);
+    fake.latest().emitJoinConfirm(0);
 
     fake.latest().emitLeave(1);
 
@@ -216,6 +218,7 @@ describe('stopping a stream', () => {
   test('should not double-close the audit chain when stop follows onLeave', () => {
     const m = manager();
     m.startStream(rtmsStartedPayload().payload);
+    fake.latest().emitJoinConfirm(0);
 
     fake.latest().emitLeave(1);
     m.stopStream(rtmsStoppedPayload().payload);
@@ -310,5 +313,113 @@ describe('proxy configuration', () => {
     manager().startStream(rtmsStartedPayload().payload);
 
     assert.equal(fake.latest().callIndex('setProxy'), -1);
+  });
+});
+
+describe('join failures', () => {
+  test('should report a leave before any successful confirm as a failed join', () => {
+    manager({
+      audit: {
+        open: () => audit.push({ type: 'open' }),
+        close: () => audit.push({ type: 'close' }),
+        joinFailed: (meetingId, reason) => audit.push({ type: 'join_failed', reason }),
+        coverageGap: () => {},
+        attendance: () => {},
+      },
+      logger: { error: () => {} },
+    }).startStream(rtmsStartedPayload().payload);
+
+    fake.latest().emitLeave(3);
+
+    assert.deepEqual(audit, [{ type: 'join_failed', reason: 'leave reason 3' }]);
+  });
+
+  test('should report nothing when stopped before the join confirmed', () => {
+    const m = manager({
+      audit: {
+        open: () => audit.push({ type: 'open' }),
+        close: () => audit.push({ type: 'close' }),
+        joinFailed: () => audit.push({ type: 'join_failed' }),
+        coverageGap: () => {},
+        attendance: () => {},
+      },
+    });
+    m.startStream(rtmsStartedPayload().payload);
+
+    m.stopStream(rtmsStoppedPayload().payload);
+
+    assert.deepEqual(audit, []);
+  });
+
+  const failed = () => audit.filter((a) => a.type === 'join_failed');
+  const failingManager = (overrides = {}) =>
+    manager({
+      audit: {
+        open: (meetingId, reason) => audit.push({ type: 'open', meetingId, reason }),
+        close: (meetingId, reason) => audit.push({ type: 'close', meetingId, reason }),
+        joinFailed: (meetingId, reason) => audit.push({ type: 'join_failed', meetingId, reason }),
+        coverageGap: () => {},
+        attendance: () => {},
+      },
+      logger: { error: () => {}, warn: () => {}, info: () => {} },
+      ...overrides,
+    });
+
+  test('should not open the audit chain when join confirm reports a failure', () => {
+    const m = failingManager();
+    m.startStream(rtmsStartedPayload().payload);
+
+    fake.latest().emitJoinConfirm(5);
+
+    assert.equal(audit.filter((a) => a.type === 'open').length, 0);
+    assert.equal(audit.filter((a) => a.type === 'close').length, 0, 'nothing was opened to close');
+    assert.match(failed()[0].reason, /reason 5/);
+    assert.equal(m.activeStreamCount(), 0);
+  });
+
+  test('should compare against the injected success code', () => {
+    failingManager({ joinOkReason: 7 }).startStream(rtmsStartedPayload().payload);
+
+    fake.latest().emitJoinConfirm(7);
+
+    assert.equal(audit.filter((a) => a.type === 'open').length, 1);
+  });
+
+  test('should report a join that returns false and allow a retry', () => {
+    fake = createFakeRtms({ joinResult: false });
+    const m = failingManager();
+
+    assert.equal(m.startStream(rtmsStartedPayload().payload), null);
+    assert.match(failed()[0].reason, /returned false/);
+    assert.equal(m.hasStream('stream-id-111'), false, 'a webhook retry must be able to try again');
+  });
+
+  test('should report a join that throws', () => {
+    fake = createFakeRtms({ joinError: new Error('ZM_RTMS_CLIENT cannot be empty') });
+    const m = failingManager();
+
+    assert.equal(m.startStream(rtmsStartedPayload().payload), null);
+    assert.match(failed()[0].reason, /cannot be empty/);
+  });
+
+  test('should pass configured credentials to join', () => {
+    failingManager({ credentials: { client: 'cid', secret: 'csecret' } }).startStream(
+      rtmsStartedPayload().payload,
+    );
+
+    const payload = fake.latest().joinPayload;
+    assert.equal(payload.client, 'cid');
+    assert.equal(payload.secret, 'csecret');
+    assert.equal(payload.rtms_stream_id, 'stream-id-111');
+  });
+
+  test('should close, not fail, when a confirmed stream later leaves', () => {
+    failingManager().startStream(rtmsStartedPayload().payload);
+    fake.latest().emitJoinConfirm(0);
+
+    fake.latest().emitLeave(1);
+
+    assert.equal(audit.filter((a) => a.type === 'close').length, 1);
+    assert.equal(failed().length, 0);
   });
 });

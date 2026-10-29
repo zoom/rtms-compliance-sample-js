@@ -29,6 +29,7 @@
     "@zoom/rtms": "^1.1.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "prisma": "^6.19.3",
     "ws": "^8.18.0",
     "yaml": "^2.8.0"
   },
@@ -36,8 +37,7 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
-    "prettier": "^3.6.0",
-    "prisma": "^6.19.3"
+    "prettier": "^3.6.0"
   },
   "keywords": [
     "zoom",
@@ -54,5 +54,11 @@
   },
   "overrides": {
     "deepmerge-ts": "^8.0.0"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "@zoom/rtms@1.1.0": true,
+    "prisma@6.19.3": true
   }
 }

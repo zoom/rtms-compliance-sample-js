@@ -18,7 +18,10 @@ import { createSegmentNormalizer } from './segments.js';
  *   tests can supply a fake instead of loading the native addon
  * @param {number} deps.transcriptLanguage a TranscriptLanguage constant
  * @param {(segment: object, ctx: object) => void} [deps.onSegment]
- * @param {object} deps.audit { open, close, coverageGap, attendance }
+ * @param {object} deps.audit { open, close, joinFailed, coverageGap, attendance }
+ * @param {number} [deps.joinOkReason] the SDK's success code (rtms.RTMS_SDK_OK)
+ * @param {{client: string, secret: string}} [deps.credentials] passed to join()
+ *   explicitly, so the credentials config validated are the ones used
  * @param {string} [deps.proxyUrl] route RTMS traffic through an HTTP proxy
  * @param {object} [deps.logger]
  */
@@ -27,6 +30,8 @@ export function createSessionManager({
   transcriptLanguage,
   onSegment,
   audit,
+  joinOkReason = 0,
+  credentials,
   proxyUrl,
   logger = console,
 }) {
@@ -35,7 +40,7 @@ export function createSessionManager({
   /** meeting_uuid -> rtms_stream_id, so a failover can find what it replaces */
   const meetingIndex = new Map();
 
-  function closeSession(session, reason) {
+  function closeSession(session, reason, { failed = false } = {}) {
     if (session.closed) return;
     session.closed = true;
 
@@ -44,7 +49,19 @@ export function createSessionManager({
       meetingIndex.delete(session.meetingId);
     }
 
-    audit.close(session.meetingId, reason);
+    // A session that never joined has no audit chain to close. Reporting it
+    // as a close would record coverage that never existed. A deliberate stop
+    // before the join confirmed is not a failure, so it reports nothing.
+    if (session.opened) audit.close(session.meetingId, reason);
+    else if (failed) audit.joinFailed?.(session.meetingId, reason);
+  }
+
+  /** Forgetting the stream lets a webhook retry attempt the join again. */
+  function failJoin(session, reason) {
+    logger.error?.(
+      `RTMS join failed for meeting ${session.meetingId}, stream ${session.streamId}: ${reason}`,
+    );
+    closeSession(session, reason, { failed: true });
   }
 
   function startStream(payload) {
@@ -86,6 +103,7 @@ export function createSessionManager({
       client: clientFactory(),
       normalize: createSegmentNormalizer(),
       closed: false,
+      opened: false,
       superseded: false,
     };
 
@@ -98,7 +116,11 @@ export function createSessionManager({
     }
 
     session.client.onJoinConfirm((reason) => {
-      audit.open(session.meetingId, reason);
+      // The callback fires for failures too. Only the success code means the
+      // stream is ours; anything else would claim coverage we do not have.
+      if (reason !== joinOkReason) return failJoin(session, `join confirm reason ${reason}`);
+      session.opened = true;
+      return audit.open(session.meetingId, reason);
     });
 
     session.client.onTranscriptData((buffer, size, timestamp, metadata) => {
@@ -120,7 +142,9 @@ export function createSessionManager({
       // meeting, or the media server drops us. onLeave is the reliable signal.
       // A superseded client's onLeave is failover noise, not an end of stream.
       if (session.superseded) return;
-      closeSession(session, reason);
+      // Leaving before a successful confirm means the join never took.
+      if (session.opened) closeSession(session, reason);
+      else closeSession(session, `leave reason ${reason}`, { failed: true });
     });
 
     // No audio, video, or deskshare callbacks. This app screens transcripts;
@@ -130,7 +154,18 @@ export function createSessionManager({
     streams.set(streamId, session);
     meetingIndex.set(meetingId, streamId);
 
-    session.client.join(payload);
+    let joined;
+    try {
+      joined = session.client.join(credentials ? { ...payload, ...credentials } : payload);
+    } catch (err) {
+      failJoin(session, `join threw: ${err.message}`);
+      return null;
+    }
+
+    if (!joined) {
+      failJoin(session, 'join returned false');
+      return null;
+    }
 
     return session;
   }

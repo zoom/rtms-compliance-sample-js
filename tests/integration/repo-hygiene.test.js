@@ -1,5 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -84,7 +85,13 @@ describe('credential safety', () => {
   });
 
   test('should not ship a .env file', () => {
-    assert.equal(exists('.env'), false, 'a committed .env is a credential leak');
+    // Checks what git tracks, not the working tree: every developer who
+    // follows the setup has a local .env, and that is fine.
+    const tracked = execFileSync('git', ['ls-files', '--', '.env'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    });
+    assert.equal(tracked.trim(), '', 'a committed .env is a credential leak');
   });
 
   test('should use obvious placeholders in .env.example', () => {
@@ -138,8 +145,20 @@ describe('Dockerfile', () => {
     // @zoom/rtms ships a glibc-linked native addon; musl cannot load it.
     const dockerfile = read('Dockerfile');
 
-    assert.ok(!/FROM\s+\S*alpine/i.test(dockerfile), 'Alpine cannot load the RTMS native addon');
-    assert.match(dockerfile, /FROM\s+\S*(debian|bookworm|slim|ubuntu)/i);
+    // Allow a --platform flag between FROM and the image.
+    const image = (name) => new RegExp(`FROM\\s+(--platform=\\S+\\s+)?\\S*${name}`, 'i');
+
+    assert.ok(!image('alpine').test(dockerfile), 'Alpine cannot load the RTMS native addon');
+    assert.match(dockerfile, image('(debian|bookworm|slim|ubuntu)'));
+  });
+
+  test('should pin every stage to linux/amd64', () => {
+    // @zoom/rtms has no linux-arm64 prebuild. Unpinned, an Apple Silicon host
+    // builds an arm64 image whose addon install silently produces nothing.
+    const stages = read('Dockerfile').match(/^FROM .*/gm) ?? [];
+
+    assert.ok(stages.length > 0);
+    for (const stage of stages) assert.match(stage, /--platform=linux\/amd64\s/);
   });
 
   test('should be multi-stage', () => {
@@ -158,12 +177,12 @@ describe('Dockerfile', () => {
 
 describe('rule packs', () => {
   test('should ship the two packs the spec names', () => {
-    assert.ok(exists(path.join('rule-packs', 'fin-us-retail-v3.yaml')));
+    assert.ok(exists(path.join('rule-packs', 'fin-us-retail-v4.yaml')));
     assert.ok(exists(path.join('rule-packs', 'health-us-intake-v1.yaml')));
   });
 
   test('should label shipped packs as examples, not compliance products', () => {
-    for (const name of ['fin-us-retail-v3.yaml', 'health-us-intake-v1.yaml']) {
+    for (const name of ['fin-us-retail-v4.yaml', 'health-us-intake-v1.yaml']) {
       const pack = read(path.join('rule-packs', name));
       assert.match(
         pack,

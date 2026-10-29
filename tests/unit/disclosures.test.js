@@ -171,3 +171,69 @@ describe('createDisclosureTracker', () => {
     );
   });
 });
+
+describe('fin-us-retail-v4 disclosure phrasings', () => {
+  const V4 = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '..',
+    'rule-packs',
+    'fin-us-retail-v4.yaml',
+  );
+  const satisfied = (text) => {
+    const tracker = createDisclosureTracker(loadPack(V4));
+    return tracker.evaluate([{ seqNo: 0, text, speakerId: 1 }]).map((c) => c.id);
+  };
+
+  const CASES = {
+    'recording-consent': [
+      "Hey, welcome to our call. Before we get started, I just want to make sure that it's okay to record before we continue.",
+      'Do I have your consent to record?',
+      'Do you mind if we record this?',
+      'Is it alright if I record this meeting?',
+      'This call is being recorded.',
+      "Just so you know, we're recording this call.",
+      'Are you okay with recording?',
+    ],
+    'fees-and-conflicts': [
+      'Our advisory fee is one percent.',
+      'The fee is 1% per year.',
+      'I want to be upfront about any conflicts of interest.',
+      "Here's how we're compensated.",
+      'We do earn a commission on some products.',
+    ],
+    'risk-disclosure': [
+      'Investments carry risk.',
+      'You could lose money.',
+      'Past performance is not indicative of future results.',
+      'There is no guarantee of returns.',
+      'Returns are not guaranteed.',
+    ],
+    'suitability-check': [
+      "What's your time horizon?",
+      'How would you describe your risk tolerance?',
+      'What are your investment goals?',
+      'How comfortable are you with risk?',
+      'When will you need this money?',
+    ],
+  };
+
+  for (const [id, phrasings] of Object.entries(CASES)) {
+    for (const text of phrasings) {
+      test(`${id}: ${text}`, () => {
+        assert.ok(satisfied(text).includes(id), `expected "${text}" to satisfy ${id}`);
+      });
+    }
+  }
+
+  test('should not treat small talk as any disclosure', () => {
+    for (const text of [
+      'Hey, welcome to our call.',
+      'How was your weekend?',
+      'Let me share my screen.',
+      'Sounds good, talk soon.',
+    ]) {
+      assert.deepEqual(satisfied(text), [], text);
+    }
+  });
+});
