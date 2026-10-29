@@ -30,7 +30,7 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "prisma": "^6.19.3",
-    "ws": "^8.18.0",
+    "ws": "^8.22.0",
     "yaml": "^2.8.0"
   },
   "devDependencies": {
