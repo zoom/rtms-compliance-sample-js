@@ -23,7 +23,7 @@ jobs:
         # 22 is the floor @zoom/rtms requires (N-API 9/10). 24 is what we ship.
         node: ['22', '24']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -38,7 +38,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -50,7 +50,7 @@ jobs:
     name: validate rule packs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -62,7 +62,7 @@ jobs:
     name: docker build and boot
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # This job is the only place the real @zoom/rtms native addon gets
       # loaded. Unit tests use a fake, so without this a broken base image or
@@ -111,7 +111,7 @@ jobs:
     name: secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # The gitleaks *action* requires a paid licence for organization repos.
